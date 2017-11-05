@@ -3,7 +3,7 @@
 [bits 32]
 
 ;制作目标文件信息
-[file "naskfunc.nas"]
+[file "asmfun.asm"]
 	global _io_hlt
 ;实际函数
 [section .text]
