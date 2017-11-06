@@ -37,12 +37,14 @@ typedef struct BOOTINFO
 void HariMain(void)
 {
 	BOOTINFO *binfo = (BOOTINFO *) 0x0ff0;
-	static char font_A[16] = {
-		0x00,0x00,0x08,0x1C,0x36,0x63,0x63,0x63,0x7F,0x63,0x63,0x63,0x00,0x00,0x00,0x00
-	};
+	extern char cons16[2064];
 	init_palette();
 	initScreen(binfo->vram, binfo->scrnx, binfo->scrny);
-	putfont(binfo->vram, binfo->scrnx, 0, 0, 7, font_A);
+	putfont(binfo->vram, binfo->scrnx, 0, 0, 7, cons16 + 'M' * 16);
+	putfont(binfo->vram, binfo->scrnx, 8, 0, 7, cons16 + 'a' * 16);
+	putfont(binfo->vram, binfo->scrnx, 16, 0, 7, cons16 + 'o' * 16);
+	putfont(binfo->vram, binfo->scrnx, 24, 0, 7, cons16 + 'Z' * 16);
+	putfont(binfo->vram, binfo->scrnx, 32, 0, 7, cons16 + 'J' * 16);
 	
 	for(;;)
 	{
