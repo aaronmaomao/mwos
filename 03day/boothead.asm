@@ -14,7 +14,7 @@ int	0x10
 mov	byte[VMODE],	8	
 mov	word[SCRNX],	320
 mov	word[SCRNY],	200
-mov	dword[VRAM],	0x0000a000	;显存的起始地址
+mov	dword[VRAM],	0x000a0000	;显存的起始地址
 
 ;用bios取的键盘上各种led指示灯的状态
 mov	ah,	0x12
