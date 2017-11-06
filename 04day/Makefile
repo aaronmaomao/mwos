@@ -55,7 +55,14 @@ asmfun.obj: asmfun.asm Makefile
 	$(nask) asmfun.asm $(objp)asmfun.obj $(objp)asmfun.lst
 	
 clean:
-	del /Q .\obj\*.*
+	del /Q .\obj\*.lst
+	del /Q .\obj\*.obj
+	del /Q .\obj\*.hrb
+	del /Q .\obj\*.asm
+	del /Q .\obj\*.gas
+	del /Q .\obj\*.bim
+	del /Q .\obj\*.map
+	del /Q .\obj\*.bin
 	
 	
 	
