@@ -1,6 +1,7 @@
 toolpath = ../../30day/tolset/z_tools/
 incpath = ../../30day/tolset/z_tools/haribote/
 objp = ./obj/
+font = st
 
 make = $(toolpath)make.exe -r
 #制作img镜像
@@ -43,8 +44,8 @@ boothead.bin: boothead.asm Makefile
 bootpack.hrb: bootpack.bim Makefile
 	$(bim2hrb) $(objp)bootpack.bim $(objp)bootpack.hrb 0
 	
-bootpack.bim: bootpack.obj asmfun.obj consolas16.obj Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)bootpack.bim stack:3136k map:$(objp)bootpack.map $(objp)bootpack.obj $(objp)asmfun.obj $(objp)consolas16.obj
+bootpack.bim: bootpack.obj asmfun.obj font.obj Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)bootpack.bim stack:3136k map:$(objp)bootpack.map $(objp)bootpack.obj $(objp)asmfun.obj $(objp)font.obj
 
 bootpack.obj: bootpack.asm Makefile
 	$(nask) $(objp)bootpack.asm $(objp)bootpack.obj $(objp)bootpack.lst
@@ -58,8 +59,8 @@ bootpack.gas: bootpack.c Makefile
 asmfun.obj: asmfun.asm Makefile
 	$(nask) asmfun.asm $(objp)asmfun.obj $(objp)asmfun.lst
 	
-consolas16.obj: consolas16.font Makefile
-	$(bin2obj) consolas16.font $(objp)consolas16.obj _cons16
+font.obj: $(font).font Makefile
+	$(bin2obj) $(font).font $(objp)font.obj _font
 
 #consolas16.bin: consolas16.txt Makefile
 #	$(makefont) consolas16.txt $(objp)consolas16.bin

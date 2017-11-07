@@ -8,6 +8,7 @@
 	global	_io_in8, _io_in16, io_in32
 	global	_io_out8, io_out16, io_out32
 	global	_io_load_eflags, _io_store_eflags
+	global _load_gdtr, _load_idtr
 ;实际函数
 [section .text]
 _io_hlt:
@@ -61,8 +62,17 @@ _io_store_eflags:	;void io_store_eflags(int eflags)
 	push	eax
 	popfd		;将栈顶值弹出放入eflags中
 	ret
-	
+_load_gdtr:		; void load_gdtr(int limit, int addr);
+	MOV	AX,[ESP+4]		; limit
+	MOV	[ESP+6],AX
+	LGDT	[ESP+6]
+	RET
 
+_load_idtr:		; void load_idtr(int limit, int addr);
+	MOV	AX,[ESP+4]		; limit
+	MOV	[ESP+6],AX
+	LIDT	[ESP+6]
+	RET
 
 
 
