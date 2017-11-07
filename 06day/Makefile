@@ -2,7 +2,11 @@ toolpath = ../../30day/tolset/z_tools/
 incpath = ../../30day/tolset/z_tools/haribote/
 objp = ./obj/
 font = st
-
+bootobjs = $(objp)bootpack.obj \
+		   $(objp)naskfunc.obj \
+		   $(objp)$(font).obj \
+		   $(objp)graphic.obj \
+		   $(objp)dsctbl.obj
 make = $(toolpath)make.exe -r
 #制作img镜像
 edimg = $(toolpath)edimg.exe
@@ -44,20 +48,17 @@ boothead.bin: boothead.asm Makefile
 bootpack.hrb: bootpack.bim Makefile
 	$(bim2hrb) $(objp)bootpack.bim $(objp)bootpack.hrb 0
 	
-bootpack.bim: bootpack.obj asmfun.obj font.obj Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)bootpack.bim stack:3136k map:$(objp)bootpack.map $(objp)bootpack.obj $(objp)asmfun.obj $(objp)font.obj
+bootpack.bim: $(bootobjs) Makefile
+	$(obj2bim) @C:\OS\30day\tolset\z_tools\haribote\haribote.rul out:$(objp)bootpack.bim stack:3136k map:$(objp)bootpack.map $(objp)bootpack.obj
 
-bootpack.obj: bootpack.asm Makefile
-	$(nask) $(objp)bootpack.asm $(objp)bootpack.obj $(objp)bootpack.lst
+%.obj: %.asm Makefile
+	$(nask) $(objp)$*.asm $(objp)$*.obj $(objp)$*.lst
 	
-bootpack.asm: bootpack.gas Makefile
-	$(gas2nask) $(objp)bootpack.gas $(objp)bootpack.asm
+%.asm: %.gas Makefile
+	$(gas2nask) $(objp)$*.gas $(objp)$*.asm
 
-bootpack.gas: bootpack.c Makefile
-	$(cc1) -o $(objp)bootpack.gas bootpack.c
-	
-asmfun.obj: asmfun.asm Makefile
-	$(nask) asmfun.asm $(objp)asmfun.obj $(objp)asmfun.lst
+%.gas: %.c Makefile
+	$(cc1) -o $(objp)$*.gas $*.c
 	
 font.obj: $(font).font Makefile
 	$(bin2obj) $(font).font $(objp)font.obj _font
