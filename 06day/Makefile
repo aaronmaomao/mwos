@@ -3,10 +3,11 @@ incpath = ../../30day/tolset/z_tools/haribote/
 objp = ./obj/
 font = st
 bootobjs = $(objp)bootpack.obj \
-		   $(objp)naskfunc.obj \
+		   $(objp)asmfun.obj \
 		   $(objp)$(font).obj \
 		   $(objp)graphic.obj \
 		   $(objp)dsctbl.obj
+
 make = $(toolpath)make.exe -r
 #制作img镜像
 edimg = $(toolpath)edimg.exe
@@ -25,9 +26,9 @@ rulefile = $(toolpath)haribote/haribote.rul
 #制作字体二进制文件
 makefont = $(toolpath)makefont.exe
 #将字体二进制文件转为可链接的obj文件
-bin2obj  = $(toolpath)bin2obj.exe
+bin2obj = $(toolpath)bin2obj.exe
 
-default :
+default:
 	$(make) img
 
 img: 
@@ -49,19 +50,24 @@ bootpack.hrb: bootpack.bim Makefile
 	$(bim2hrb) $(objp)bootpack.bim $(objp)bootpack.hrb 0
 	
 bootpack.bim: $(bootobjs) Makefile
-	$(obj2bim) @C:\OS\30day\tolset\z_tools\haribote\haribote.rul out:$(objp)bootpack.bim stack:3136k map:$(objp)bootpack.map $(objp)bootpack.obj
+	$(obj2bim) @$(rulefile) out:$(objp)bootpack.bim stack:3136k map:$(objp)bootpack.map $(bootobjs)
 
-%.obj: %.asm Makefile
+#生成汇编函数库目标文件
+$(objp)asmfun.obj: asmfun.asm Makefile	
+	$(nask) asmfun.asm $(objp)asmfun.obj $(objp)asmfun.lst
+
+#生成字体目标文件	
+$(objp)$(font).obj: $(font).font Makefile
+	$(bin2obj) $(font).font $(objp)$(font).obj _font
+#一般规则	
+$(objp)%.obj: $(objp)%.asm Makefile
 	$(nask) $(objp)$*.asm $(objp)$*.obj $(objp)$*.lst
 	
-%.asm: %.gas Makefile
+$(objp)%.asm: $(objp)%.gas Makefile
 	$(gas2nask) $(objp)$*.gas $(objp)$*.asm
 
-%.gas: %.c Makefile
+$(objp)%.gas: %.c Makefile
 	$(cc1) -o $(objp)$*.gas $*.c
-	
-font.obj: $(font).font Makefile
-	$(bin2obj) $(font).font $(objp)font.obj _font
 
 #consolas16.bin: consolas16.txt Makefile
 #	$(makefont) consolas16.txt $(objp)consolas16.bin
@@ -75,6 +81,6 @@ clean:
 	del /Q .\obj\*.bim
 	del /Q .\obj\*.map
 	del /Q .\obj\*.bin
-	
+
 	
 	

@@ -1,22 +1,4 @@
-typedef struct SEGMENT_DESC {	//段描述符
-	short limit_low, base_low;
-	char base_mid, access_right;
-	char limit_high, base_high;
-} SEGMENT_DESC;
-
-typedef struct GATE_DESC {	//中断描述符
-	short offset_low, selector;
-	char dw_count, access_right;
-	short offset_high;
-} GATE_DESC;
-
-void load_gdtr(int limit, int addr);
-void load_idtr(int limit, int addr);
-
-void init_gdtidt(void);
-void set_segmdesc(SEGMENT_DESC *sd, unsigned int limit, int base, int ar);
-void set_gatedesc(GATE_DESC *gd, int offset, int selector, int ar);
-
+#include "bootpack.h"
 
 void init_gdtidt(void)
 {

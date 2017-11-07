@@ -1,19 +1,5 @@
 #include <stdio.h>
-
-typedef struct BOOTINFO	 {	//启动所需的信息
-	char cyls, leds, vmode, reserver;
-	short scrnx, scrny;
-	char *vram;
-} BOOTINFO;
-
-void io_hlt(void);
-
-void init_palette(void);
-void initScreen(char *vram, int xsize, int ysize);
-void putfonts(char *vram, int xsize, int x, int y, char color, unsigned char *str);
-void init_mouse_cursor8(char *mouseVram, char bg);
-void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int pxl, int pyl, char *buf, int bxsize);
-void init_gdtidt(void);
+#include "bootpack.h"
 
 void HariMain(void)
 {
