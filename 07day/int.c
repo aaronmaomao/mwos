@@ -1,4 +1,7 @@
 #include "bootpack.h"
+#include "stdio.h"
+
+#define PORT_KEYDAT	0x0060	//键盘的端口地址
 
 /** 初始化pic可编程中断控制器 */
 void init_pic(void)
@@ -25,19 +28,22 @@ void init_pic(void)
 void inthandler21(int *esp)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
-	putfonts(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, "111111!");
-	
-	for(;;)
-	{
-		io_hlt();
-	}
+	unsigned char data;
+	static unsigned char i=0, s[100];
+	io_out8(PIC0_OCW2, 0x61);	//通知PIC ，IRQ1已受理完毕
+	data = io_in8(PORT_KEYDAT);
+	sprintf(s+i, "%02X", data);
+	i+=2;
+	boxfill8(binfo->vram, binfo->scrnx, COL8_008400, 10, 100, 125, 115);
+	putfonts(binfo->vram, binfo->scrnx, 10, 100, COL8_000000, s);
+	return;
 }
 
 /** 来自ps2鼠标的中断处理 */
 void inthandler2c(int *esp)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
-	putfonts(binfo->vram, binfo->scrnx, 10, 10, COL8_000000, "111111!");
+	putfonts(binfo->vram, binfo->scrnx, 10, 120, COL8_000000, "The mouse is press!");
 	
 	for(;;)
 	{
