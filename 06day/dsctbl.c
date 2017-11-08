@@ -2,32 +2,36 @@
 
 void init_gdtidt(void)
 {
-	struct SEGMENT_DESC *gdt = (SEGMENT_DESC *) 0x00270000;
-	struct GATE_DESC *idt = (GATE_DESC *) 0x0026f800;
+	struct SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
+	struct GATE_DESC *idt = (GATE_DESC *) ADR_IDT;
 	int i;
 
 	/* GDTの初期化 */
-	for (i = 0; i < 8192; i++) {
+	for (i = 0; i < LIMIT_GDT / 8; i++) {
 		set_segmdesc(gdt + i, 0, 0, 0);
 	}
-	set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, 0x4092);
-	set_segmdesc(gdt + 2, 0x0007ffff, 0x00280000, 0x409a);
-	load_gdtr(0xffff, 0x00270000);
+	set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, AR_DATA32_RW);
+	set_segmdesc(gdt + 2, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
+	load_gdtr(LIMIT_GDT, ADR_GDT);
 
 	/* IDTの初期化 */
-	for (i = 0; i < 256; i++) {
+	for (i = 0; i < LIMIT_IDT / 8; i++) {
 		set_gatedesc(idt + i, 0, 0, 0);
 	}
-	load_idtr(0x7ff, 0x0026f800);
-
+	load_idtr(LIMIT_IDT, ADR_IDT);
+	
+	set_gatedesc(idt + 0x21, (int) asm_inthandler21, 2 * 8, AR_INTGATE32);	//2表示编号为2的段,低三位=0
+	set_gatedesc(idt + 0x27, (int) asm_inthandler27, 2 * 8, AR_INTGATE32);
+	set_gatedesc(idt + 0x2c, (int) asm_inthandler2c, 2 * 8, AR_INTGATE32);
+	
 	return;
 }
 
 void set_segmdesc(SEGMENT_DESC *sd, unsigned int limit, int base, int ar)
 {
-	if (limit > 0xfffff) {
-		ar |= 0x8000; /* G_bit = 1 */
-		limit /= 0x1000;
+	if (limit > 0xfffff) {	//即内存访问域大于1M
+		ar |= 0x8000; /* G_bit = 1 */ 
+		limit /= 0x1000;	//右移三位，即去掉了limit_high的高3位
 	}
 	sd->limit_low    = limit & 0xffff;
 	sd->base_low     = base & 0xffff;

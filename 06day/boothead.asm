@@ -26,10 +26,10 @@ mov	ah,	0x02
 int	0x16
 mov	[LEDS],	al
 
-; PICが一切の割り込みを受け付けないようにする->确保PIC不接受任何中断
+; PICが一切の割り込みを受け付けないようにする
 ;	AT互換機の仕様では、PICの初期化をするなら、
 ;	こいつをCLI前にやっておかないと、たまにハングアップする
-;	PICの初期化はあとでやる->稍后我将初始化PIC
+;	PICの初期化はあとでやる
 
 		MOV		AL,0xff
 		OUT		0x21,AL
@@ -68,8 +68,8 @@ pipelineflush:
 
 ; bootpackの転送
 
-		MOV		ESI,bootpack	; 転送元 -> 转移源
-		MOV		EDI,BOTPAK		; 転送先 -> 转发目的地
+		MOV		ESI,bootpack	; 転送元
+		MOV		EDI,BOTPAK		; 転送先
 		MOV		ECX,512*1024/4
 		CALL	memcpy
 
@@ -95,7 +95,7 @@ pipelineflush:
 ; asmheadでしなければいけないことは全部し終わったので、
 ;	あとはbootpackに任せる
 
-; bootpackの起動 -> 启动bootpack
+; bootpackの起動
 
 		MOV		EBX,BOTPAK
 		MOV		ECX,[EBX+16]

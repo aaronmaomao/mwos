@@ -4,11 +4,14 @@
 [INSTRSET "i486p"]	;使用到486为止的指令集
 
 [file "asmfun.asm"]	;制作目标文件信息
-	global	_io_hlt, _write_mem8, _io_cli
+	global	_io_hlt, _write_mem8, _io_cli, _io_sti
 	global	_io_in8, _io_in16, io_in32
 	global	_io_out8, io_out16, io_out32
 	global	_io_load_eflags, _io_store_eflags
-	global _load_gdtr, _load_idtr
+	global	_load_gdtr, _load_idtr
+	global	_asm_inthandler21, _asm_inthandler27, _asm_inthandler2c
+	
+	extern	_inthandler21,	_inthandler27, _inthandler2c
 ;实际函数
 [section .text]
 _io_hlt:
@@ -23,7 +26,9 @@ _write_mem8;	;_write_mem8(int addr, int data)
 _io_cli:	;void io_cli(void)	清除中断标记位
 	cli
 	ret
-	
+_io_sti:	;			设置中断标记位
+	sti
+	ret
 _io_in8:	;int io_in8(int port)
 	mov	edx,	[esp+4]
 	mov	eax,	0
@@ -74,5 +79,56 @@ _load_idtr:		; void load_idtr(int limit, int addr);
 	LIDT	[ESP+6]
 	RET
 
+_asm_inthandler21:
+	push	es
+	push	ds
+	pushad
+	mov	eax,	esp
+	push	eax
+	
+	mov	ax,	ss
+	mov	ds,	ax
+	mov	es,	ax
+	call	_inthandler21
+	
+	pop	eax
+	popad
+	pop	ds
+	pop	es
+	iretd
 
+_asm_inthandler27:
+	push	es
+	push	ds
+	pushad
+	mov	eax,	esp
+	push	eax
+	
+	mov	ax,	ss
+	mov	ds,	ax
+	mov	es,	ax
+	call	_inthandler27
+	
+	pop	eax
+	popad
+	pop	ds
+	pop	es
+	iretd
 
+_asm_inthandler2c:
+	push	es
+	push	ds
+	pushad
+	mov	eax,	esp
+	push	eax
+	
+	mov	ax,	ss
+	mov	ds,	ax
+	mov	es,	ax
+	call	_inthandler2c
+	
+	pop	eax
+	popad
+	pop	ds
+	pop	es
+	iretd
