@@ -35,7 +35,7 @@ void asm_inthandler2c(void);
 #define COL8_FFFFFF		7
 #define COL8_C6C6C6		8
 #define COL8_840000		9
-#define COL8_008400		10	;desktop color
+#define COL8_008400		10	//desktop color
 #define COL8_848400		11
 #define COL8_000084		12
 #define COL8_840084		13

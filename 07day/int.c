@@ -29,12 +29,12 @@ void inthandler21(int *esp)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
 	unsigned char data;
-	static unsigned char i=0, s[100];
+	static unsigned char s[100], i=0; 
 	io_out8(PIC0_OCW2, 0x61);	//通知PIC ，IRQ1已受理完毕
 	data = io_in8(PORT_KEYDAT);
 	sprintf(s+i, "%02X", data);
-	i+=2;
-	boxfill8(binfo->vram, binfo->scrnx, COL8_008400, 10, 100, 125, 115);
+	i += 2;
+	boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 10, 100, 125, 115);
 	putfonts(binfo->vram, binfo->scrnx, 10, 100, COL8_000000, s);
 	return;
 }
