@@ -3,6 +3,8 @@
 
 #define PORT_KEYDAT	0x0060	//键盘的端口地址
 
+FIFO8 keyfifo;
+
 /** 初始化pic可编程中断控制器 */
 void init_pic(void)
 {
@@ -27,15 +29,10 @@ void init_pic(void)
 /** 来自ps2键盘的中断处理 */
 void inthandler21(int *esp)
 {
-	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
 	unsigned char data;
-	static unsigned char s[100], i=0; 
 	io_out8(PIC0_OCW2, 0x61);	//通知PIC ，IRQ1已受理完毕
 	data = io_in8(PORT_KEYDAT);
-	sprintf(s+i, "%02X", data);
-	i += 2;
-	boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 10, 100, 125, 115);
-	putfonts(binfo->vram, binfo->scrnx, 10, 100, COL8_000000, s);
+	fifo8_put(&keyfifo, data);
 	return;
 }
 

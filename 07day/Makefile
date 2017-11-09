@@ -7,7 +7,8 @@ bootobjs = $(objp)bootpack.obj \
 		   $(objp)$(font).obj \
 		   $(objp)graphic.obj \
 		   $(objp)dsctbl.obj \
-		   $(objp)int.obj
+		   $(objp)int.obj \
+		   $(objp)fifo.obj
 
 make = $(toolpath)make.exe -r
 #制作img镜像

@@ -1,3 +1,6 @@
+/** common */
+#define uchar unsigned char
+
 /** asmhead.asm */
 typedef struct BOOTINFO	 {	//启动所需的信息，共16Byte
 	char cyls;	//启动区读的硬盘数量
@@ -14,6 +17,7 @@ typedef struct BOOTINFO	 {	//启动所需的信息，共16Byte
 void io_hlt(void);
 void io_cli(void);
 void io_sti(void);
+void io_stihlt(void);
 void io_out8(int port, int data);
 int io_in8(int port);
 int io_load_eflags(void);
@@ -92,6 +96,13 @@ void set_gatedesc(GATE_DESC *gd, int offset, int selector, int ar);
 #define PIC1_ICW3		0x00a1
 #define PIC1_ICW4		0x00a1
 
+#define FLAGS_OVERRUN	0x0001
+
+typedef struct FIFO8 {
+	unsigned char *buf;
+	int p, q, size, free, flags;
+} FIFO8;
+
 /* 初始化pic可编程中断控制器 */
 void init_pic(void);
 /* 来自ps2键盘的中断处理(IRQ1->INT21) */
@@ -99,3 +110,11 @@ void inthandler21(int *esp);
 /* 来自ps2鼠标的中断处理(IRQ12->INT2c) */
 void inthandler2c(int *esp);
 void inthandler27(int *esp);
+
+void init_fifo8(FIFO8 *fifo, int size, uchar *buf);
+/* 向fifo缓冲区添加数据 */
+int fifo8_put(FIFO8 *fifo, uchar data);
+/* 从缓冲区取数据 */
+int fifo8_get(FIFO8 *fifo); 
+/* 缓冲区的状态 */
+int fifo8_status(FIFO8 *fifo);

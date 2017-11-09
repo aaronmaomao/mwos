@@ -4,7 +4,7 @@
 [INSTRSET "i486p"]	;使用到486为止的指令集
 
 [file "asmfun.asm"]	;制作目标文件信息
-	global	_io_hlt, _write_mem8, _io_cli, _io_sti
+	global	_io_hlt, _write_mem8, _io_cli, _io_sti, _io_stihlt
 	global	_io_in8, _io_in16, io_in32
 	global	_io_out8, io_out16, io_out32
 	global	_io_load_eflags, _io_store_eflags
@@ -28,6 +28,10 @@ _io_cli:	;void io_cli(void)	清除中断标记位
 	ret
 _io_sti:	;			设置中断标记位
 	sti
+	ret
+_io_stihlt:
+	sti
+	hlt
 	ret
 _io_in8:	;int io_in8(int port)
 	mov	edx,	[esp+4]
