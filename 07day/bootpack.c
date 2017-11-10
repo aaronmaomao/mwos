@@ -7,28 +7,28 @@ void HariMain(void)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
 	char temp[40], dat;
-	char keybuf[32];	//¼üÅÌ»º³åÇø
-	char mcursor[256];	//±£´æÊó±êÖ¸ÕëÍ¼ÏñµÄÃ¿Ò»¸öÏñËØµÄĞÅÏ¢
+	char keybuf[32];	//é”®ç›˜ç¼“å†²åŒº
+	char mcursor[256];	//ä¿å­˜é¼ æ ‡æŒ‡é’ˆå›¾åƒçš„æ¯ä¸€ä¸ªåƒç´ çš„ä¿¡æ¯
 	
 	int scrnmx = (binfo->scrnx - 16) / 2; 
 	int scrnmy = (binfo->scrny - 16) / 2;
 	
 	init_gdtidt();
 	init_pic();
-	io_sti(); /* IDT/PIC¤Î³õÆÚ»¯¤¬½K¤ï¤Ã¤¿¤Î¤ÇCPU¤Î¸î¤êŞz¤ß½ûÖ¹¤ò½â³ı */
+	io_sti(); /* IDT/PICã®åˆæœŸåŒ–ãŒçµ‚ã‚ã£ãŸã®ã§CPUã®å‰²ã‚Šè¾¼ã¿ç¦æ­¢ã‚’è§£é™¤ */
 	
 	init_fifo8(&keyfifo, 32, keybuf);
-	io_out8(PIC0_IMR, 0xf9); /* PIC1¤È¥­©`¥Ü©`¥É¤òÔS¿É(11111001) */
-	io_out8(PIC1_IMR, 0xef); /* ¥Ş¥¦¥¹¤òÔS¿É(11101111) */
+	io_out8(PIC0_IMR, 0xf9); /* PIC1ã¨ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰ã‚’è¨±å¯(11111001) */
+	io_out8(PIC1_IMR, 0xef); /* ãƒã‚¦ã‚¹ã‚’è¨±å¯(11101111) */
 	
 	init_palette();
 	initScreen(binfo->vram, binfo->scrnx, binfo->scrny);
 	putfonts(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, "Hello MaoZhengjun!");
 	putfonts(binfo->vram, binfo->scrnx, 0, 16, COL8_00FFFF, "Welcome to MWOS!");
-	sprintf(temp, "    scrnx = %d", binfo->scrnx);	//½«Êä³ö½á¹û·ÅÈëµ½tempÖĞ
+	sprintf(temp, "    scrnx = %d", binfo->scrnx);	//å°†è¾“å‡ºç»“æœæ”¾å…¥åˆ°tempä¸­
 	putfonts(binfo->vram, binfo->scrnx, 0, 32, COL8_00FFFF, temp);
-	init_mouse_cursor8(mcursor, COL8_008484);	//ÖÆ×÷Êó±êÖ¸ÕëÍ¼Ïñ
-	putblock8_8(binfo->vram, binfo->scrnx, 16, 16, scrnmx, scrnmy, mcursor, 16);	//ÏÔÊ¾Êó±êÖ¸ÕëÍ¼Ïñ
+	init_mouse_cursor8(mcursor, COL8_008484);	//åˆ¶ä½œé¼ æ ‡æŒ‡é’ˆå›¾åƒ
+	putblock8_8(binfo->vram, binfo->scrnx, 16, 16, scrnmx, scrnmy, mcursor, 16);	//æ˜¾ç¤ºé¼ æ ‡æŒ‡é’ˆå›¾åƒ
 	
 	for(;;)
 	{
