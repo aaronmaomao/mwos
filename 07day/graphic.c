@@ -3,7 +3,7 @@
 //初始化调色板
 void init_palette(void)
 {
-	static unsigned char table_rgb[16 * 3] = 
+	static unsigned char table_rgb[16 * 3] =
 	{
 		0x00, 0x00, 0x00,	/*  0:黒 */
 		0xff, 0x00, 0x00,	/*  1:明るい赤 */
@@ -61,22 +61,22 @@ void boxfill8(unsigned char * vram, int xsize, unsigned char color, int x0, int 
 //初始化桌面
 void initScreen(char *vram, int xsize, int ysize)
 {
-	boxfill8(vram, xsize, COL8_008484,  0,         0,          xsize -  1, ysize - 29);
-	boxfill8(vram, xsize, COL8_C6C6C6,  0,         ysize - 28, xsize -  1, ysize - 28);
-	boxfill8(vram, xsize, COL8_FFFFFF,  0,         ysize - 27, xsize -  1, ysize - 27);
-	boxfill8(vram, xsize, COL8_C6C6C6,  0,         ysize - 26, xsize -  1, ysize -  1);
+	boxfill8(vram, xsize, COL8_008484, 0, 0, xsize - 1, ysize - 29);
+	boxfill8(vram, xsize, COL8_C6C6C6, 0, ysize - 28, xsize - 1, ysize - 28);
+	boxfill8(vram, xsize, COL8_FFFFFF, 0, ysize - 27, xsize - 1, ysize - 27);
+	boxfill8(vram, xsize, COL8_C6C6C6, 0, ysize - 26, xsize - 1, ysize - 1);
 
-	boxfill8(vram, xsize, COL8_FFFFFF,  3,         ysize - 24, 59,         ysize - 24);
-	boxfill8(vram, xsize, COL8_FFFFFF,  2,         ysize - 24,  2,         ysize -  4);
-	boxfill8(vram, xsize, COL8_848484,  3,         ysize -  4, 59,         ysize -  4);
-	boxfill8(vram, xsize, COL8_848484, 59,         ysize - 23, 59,         ysize -  5);
-	boxfill8(vram, xsize, COL8_000000,  2,         ysize -  3, 59,         ysize -  3);
-	boxfill8(vram, xsize, COL8_000000, 60,         ysize - 24, 60,         ysize -  3);
+	boxfill8(vram, xsize, COL8_FFFFFF, 3, ysize - 24, 59, ysize - 24);
+	boxfill8(vram, xsize, COL8_FFFFFF, 2, ysize - 24, 2, ysize - 4);
+	boxfill8(vram, xsize, COL8_848484, 3, ysize - 4, 59, ysize - 4);
+	boxfill8(vram, xsize, COL8_848484, 59, ysize - 23, 59, ysize - 5);
+	boxfill8(vram, xsize, COL8_000000, 2, ysize - 3, 59, ysize - 3);
+	boxfill8(vram, xsize, COL8_000000, 60, ysize - 24, 60, ysize - 3);
 
-	boxfill8(vram, xsize, COL8_848484, xsize - 47, ysize - 24, xsize -  4, ysize - 24);
-	boxfill8(vram, xsize, COL8_848484, xsize - 47, ysize - 23, xsize - 47, ysize -  4);
-	boxfill8(vram, xsize, COL8_FFFFFF, xsize - 47, ysize -  3, xsize -  4, ysize -  3);
-	boxfill8(vram, xsize, COL8_FFFFFF, xsize -  3, ysize - 24, xsize -  3, ysize -  3);
+	boxfill8(vram, xsize, COL8_848484, xsize - 47, ysize - 24, xsize - 4, ysize - 24);
+	boxfill8(vram, xsize, COL8_848484, xsize - 47, ysize - 23, xsize - 47, ysize - 4);
+	boxfill8(vram, xsize, COL8_FFFFFF, xsize - 47, ysize - 3, xsize - 4, ysize - 3);
+	boxfill8(vram, xsize, COL8_FFFFFF, xsize - 3, ysize - 24, xsize - 3, ysize - 3);
 }
 
 //显示一个8*16点阵字符
@@ -88,7 +88,7 @@ void putfont(char *vram, int xsize, int x, int y, char color, char *font)
 	{
 		d = font[i];
 		p = vram + x + (y+i) * xsize;
-		
+
 		if((d&0x80)) {p[0] = color;}	//点亮一个像素点
 		if((d&0x40)) {p[1] = color;}
 		if((d&0x20)) {p[2] = color;}
@@ -134,14 +134,14 @@ void init_mouse_cursor8(char *mouseVram, char bc)
 		".............***"
 	};
 	int x, y;
-	for(y=0; y<16; y++) {
-		for(x=0; x<16; x++) {
-			if(cursor[x][y] == '*')
-				mouseVram[y*16+x] = COL8_000000;
-			if(cursor[x][y] == 'O')
-				mouseVram[y*16+x] = COL8_FFFFFF;
-			if(cursor[x][y] == '.')
-				mouseVram[y*16+x] = bc;
+	for (y = 0; y < 16; y++) {
+		for (x = 0; x < 16; x++) {
+			if (cursor[x][y] == '*')
+				mouseVram[y * 16 + x] = COL8_000000;
+			if (cursor[x][y] == 'O')
+				mouseVram[y * 16 + x] = COL8_FFFFFF;
+			if (cursor[x][y] == '.')
+				mouseVram[y * 16 + x] = bc;
 		}
 	}
 }
