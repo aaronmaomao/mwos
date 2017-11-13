@@ -1,5 +1,5 @@
-#include "bootpack.h"
 #include "stdio.h"
+#include "bootpack.h"
 
 FIFO8 keyfifo;
 FIFO8 mousefifo;
@@ -25,6 +25,8 @@ void init_pic(void)
 	return;
 }
 
+#define PORT_KEYDAT		0x0060
+
 /** 来自ps2键盘的中断处理 */
 void inthandler21(int *esp)
 {
@@ -38,7 +40,7 @@ void inthandler21(int *esp)
 /** 来自ps2鼠标的中断处理 */
 void inthandler2c(int *esp)
 {
-	uchar data;
+	unsigned char data;
 	io_out8(PIC1_OCW2, 0x64);	//通知PIC ，IRQ12已受理完毕
 	io_out8(PIC0_OCW2, 0x62);	//通知PIC ，IRQ02已受理完毕,因为pic1连在IRQ2上
 	data = io_in8(PORT_KEYDAT);
