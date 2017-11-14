@@ -2,8 +2,8 @@
 
 void init_gdtidt(void)
 {
-	struct SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
-	struct GATE_DESC *idt = (GATE_DESC *) ADR_IDT;
+	SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
+	GATE_DESC *idt = (GATE_DESC *) ADR_IDT;
 	int i;
 
 	/* GDTの初期化 */

@@ -7,6 +7,7 @@ typedef struct BOOTINFO { /* 0x0ff0-0x0fff */
 	short scrnx, scrny; /* 画面解像度 */
 	char *vram;
 } BOOTINFO;
+
 #define ADR_BOOTINFO	0x00000ff0
 
 /* naskfunc.nas */
@@ -29,10 +30,10 @@ typedef struct FIFO8 {
 	unsigned char *buf;
 	int p, q, size, free, flags;
 } FIFO8;
-void fifo8_init(struct FIFO8 *fifo, int size, unsigned char *buf);
-int fifo8_put(struct FIFO8 *fifo, unsigned char data);
-int fifo8_get(struct FIFO8 *fifo);
-int fifo8_status(struct FIFO8 *fifo);
+void fifo8_init(FIFO8 *fifo, int size, unsigned char *buf);
+int fifo8_put(FIFO8 *fifo, unsigned char data);
+int fifo8_get(FIFO8 *fifo);
+int fifo8_status(FIFO8 *fifo);
 
 /* graphic.c */
 void init_palette(void);
@@ -62,19 +63,19 @@ void putblock8_8(char *vram, int vxsize, int pxsize,
 #define COL8_848484		15
 
 /* dsctbl.c */
-typedef struct SEGMENT_DESCRIPTOR {
+typedef struct SEGMENT_DESC {
 	short limit_low, base_low;
 	char base_mid, access_right;
 	char limit_high, base_high;
-} SEGMENT_DESCRIPTOR;
-typedef struct GATE_DESCRIPTOR {
+} SEGMENT_DESC;
+typedef struct GATE_DESC {
 	short offset_low, selector;
 	char dw_count, access_right;
 	short offset_high;
-} GATE_DESCRIPTOR;
+} GATE_DESC;
 void init_gdtidt(void);
-void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar);
-void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar);
+void set_segmdesc(SEGMENT_DESC *sd, unsigned int limit, int base, int ar);
+void set_gatedesc(GATE_DESC *gd, int offset, int selector, int ar);
 #define ADR_IDT			0x0026f800
 #define LIMIT_IDT		0x000007ff
 #define ADR_GDT			0x00270000
