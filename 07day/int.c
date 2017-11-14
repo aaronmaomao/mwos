@@ -40,7 +40,7 @@ void inthandler21(int *esp)
 /** 来自ps2鼠标的中断处理 */
 void inthandler2c(int *esp)
 {
-	uchar data;
+	unsigned char data;
 	io_out8(PIC1_OCW2, 0x64);	//通知PIC ，IRQ12已受理完毕
 	io_out8(PIC0_OCW2, 0x62);	//通知PIC ，IRQ02已受理完毕,因为pic1连在IRQ2上
 	data = io_in8(PORT_KEYDAT);

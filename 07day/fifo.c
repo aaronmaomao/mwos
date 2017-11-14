@@ -1,6 +1,6 @@
 #include "bootpack.h"
 
-void init_fifo8(FIFO8 *fifo, int size, uchar *buf)
+void init_fifo8(FIFO8 *fifo, int size, unsigned char *buf)
 {
 	fifo->size = size;
 	fifo->buf = buf;
@@ -12,7 +12,7 @@ void init_fifo8(FIFO8 *fifo, int size, uchar *buf)
 }
 
 /** 向fifo缓冲区添加数据 */
-int fifo8_put(FIFO8 *fifo, uchar data) 
+int fifo8_put(FIFO8 *fifo, unsigned char data)
 {
 	if(fifo->free == 0) {
 		fifo->flags |= FLAGS_OVERRUN;	//溢出

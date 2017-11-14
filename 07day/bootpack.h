@@ -1,5 +1,4 @@
 /** common */
-#define uchar unsigned char
 
 /** asmhead.asm */
 typedef struct BOOTINFO	 {	//启动所需的信息，共16Byte
@@ -96,46 +95,23 @@ void set_gatedesc(GATE_DESC *gd, int offset, int selector, int ar);
 #define PIC1_ICW3		0x00a1
 #define PIC1_ICW4		0x00a1
 
-#define FLAGS_OVERRUN	0x0001		//用来判断fifo是否溢出
-
-#define PORT_KEYDAT				0x0060
-#define PORT_KEYSTA				0x0064	//键盘/鼠标控制电路io地址
-#define PORT_KEYCMD				0x0064	//向键盘控制电路发送命令的io地址
-#define KEYSTA_SEND_NOTREADY	0x02
-#define KEYCMD_WRITE_MODE		0x60
-#define KBC_MODE				0x47
-
-#define KEYCMD_SENDTO_MOUSE		0xd4
-#define MOUSECMD_ENABLE			0xf4
-
-typedef struct FIFO8 {
-	unsigned char *buf;
-	int p, q, size, free, flags;
-} FIFO8;
-
 /* 初始化pic可编程中断控制器 */
 void init_pic(void);
-/**
- * 等待键盘控制电路准备完毕（键盘控制与鼠标控制为同一块电路）
- */
-void wait_KBC_sendready(void);
-/**
- * 初始化键盘/鼠标控制电路
- */
-void init_keyboard(void);
-/**
- * 激活鼠标
- */
-void enable_mouse(void);
 /* 来自ps2键盘的中断处理(IRQ1->INT21) */
 void inthandler21(int *esp);
 /* 来自ps2鼠标的中断处理(IRQ12->INT2c) */
 void inthandler2c(int *esp);
 void inthandler27(int *esp);
 
-void init_fifo8(FIFO8 *fifo, int size, uchar *buf);
+/*** fifo.c */
+typedef struct FIFO8 {
+	unsigned char *buf;
+	int p, q, size, free, flags;
+} FIFO8;
+
+void init_fifo8(FIFO8 *fifo, int size, unsigned char *buf);
 /* 向fifo缓冲区添加数据 */
-int fifo8_put(FIFO8 *fifo, uchar data);
+int fifo8_put(FIFO8 *fifo, unsigned char data);
 /* 从缓冲区取数据 */
 int fifo8_get(FIFO8 *fifo); 
 /* 缓冲区的状态 */
