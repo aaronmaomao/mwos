@@ -1,8 +1,7 @@
 #include "stdio.h"
 #include "bootpack.h"
 
-FIFO8 keyfifo;
-FIFO8 mousefifo;
+FIFO8 keyfifo, mousefifo;
 
 /** 初始化pic可编程中断控制器 */
 void init_pic(void)
@@ -30,7 +29,7 @@ void init_pic(void)
 /** 来自ps2键盘的中断处理 */
 void inthandler21(int *esp)
 {
-	unsigned char data;
+	uchar data;
 	io_out8(PIC0_OCW2, 0x61);	//通知PIC ，IRQ1已受理完毕
 	data = io_in8(PORT_KEYDAT);
 	fifo8_put(&keyfifo, data);
@@ -40,7 +39,7 @@ void inthandler21(int *esp)
 /** 来自ps2鼠标的中断处理 */
 void inthandler2c(int *esp)
 {
-	unsigned char data;
+	uchar data;
 	io_out8(PIC1_OCW2, 0x64);	//通知PIC ，IRQ12已受理完毕
 	io_out8(PIC0_OCW2, 0x62);	//通知PIC ，IRQ02已受理完毕,因为pic1连在IRQ2上
 	data = io_in8(PORT_KEYDAT);

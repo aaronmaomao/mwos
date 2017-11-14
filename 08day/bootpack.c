@@ -1,18 +1,22 @@
-/* bootpackのメイン */
-
 #include "bootpack.h"
 #include <stdio.h>
 
-extern struct FIFO8 keyfifo, mousefifo;
-void enable_mouse(void);
+typedef struct MOUSE_DESCODE {
+	uchar buf[3], phase;
+	int x, y, btn;
+} MOUSE_DESCODE;
+
+extern FIFO8 keyfifo, mousefifo;
+void enable_mouse(MOUSE_DESCODE *mdecode);
 void init_keyboard(void);
+int mouse_decode(MOUSE_DESCODE *mdecode, uchar data);
 
 void HariMain(void)
 {
-	struct BOOTINFO *binfo = (struct BOOTINFO *) ADR_BOOTINFO;
-	char s[40], mcursor[256], keybuf[32], mousebuf[128];
-	int mx, my, i;
-	unsigned char mouse_dbuf[3], mouse_phase;
+	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
+	char temp[40], mcursor[256], keybuf[32], mousebuf[128];
+	int mx, my, dat;
+	MOUSE_DESCODE mdecode;
 
 	init_gdtidt();
 	init_pic();
@@ -30,11 +34,10 @@ void HariMain(void)
 	my = (binfo->scrny - 28 - 16) / 2;
 	init_mouse_cursor8(mcursor, COL8_008484);
 	putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
-	sprintf(s, "(%d, %d)", mx, my);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+	sprintf(temp, "(%3d, %3d)", mx, my);
+	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, temp);
 
-	enable_mouse();
-	mouse_phase = 0; /* マウスの0xfaを待っている段階へ */
+	enable_mouse(&mdecode);
 
 	for (;;) {
 		io_cli();
@@ -42,35 +45,49 @@ void HariMain(void)
 			io_stihlt();
 		} else {
 			if (fifo8_status(&keyfifo) != 0) {
-				i = fifo8_get(&keyfifo);
+				dat = fifo8_get(&keyfifo);
 				io_sti();
-				sprintf(s, "%02X", i);
+				sprintf(temp, "%02X", dat);
 				boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 16, 15, 31);
-				putfonts8_asc(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
+				putfonts8_asc(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, temp);
 			} else if (fifo8_status(&mousefifo) != 0) {
-				i = fifo8_get(&mousefifo);
+				dat = fifo8_get(&mousefifo);
 				io_sti();
-				if (mouse_phase == 0) {
-					/* マウスの0xfaを待っている段階 */
-					if (i == 0xfa) {
-						mouse_phase = 1;
+				if (mouse_decode(&mdecode, dat) != 0) {
+					sprintf(temp, "[lcr %4d %4d]", mdecode.x, mdecode.y);
+					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
+					putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, temp);
+					if ((mdecode.btn & 0x01) != 0) {
+						temp[1] = 'L';
 					}
-				} else if (mouse_phase == 1) {
-					/* マウスの1バイト目を待っている段階 */
-					mouse_dbuf[0] = i;
-					mouse_phase = 2;
-				} else if (mouse_phase == 2) {
-					/* マウスの2バイト目を待っている段階 */
-					mouse_dbuf[1] = i;
-					mouse_phase = 3;
-				} else if (mouse_phase == 3) {
-					/* マウスの3バイト目を待っている段階 */
-					mouse_dbuf[2] = i;
-					mouse_phase = 1;
-					/* データが3バイト揃ったので表示 */
-					sprintf(s, "%02X %02X %02X", mouse_dbuf[0], mouse_dbuf[1], mouse_dbuf[2]);
-					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 32, 16, 32 + 8 * 8 - 1, 31);
-					putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
+					if ((mdecode.btn & 0x02) != 0) {
+						temp[3] = 'R';
+					}
+					if ((mdecode.btn & 0x04) != 0) {
+						temp[2] = 'C';
+					}
+					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, mx, my, mx + 15, my + 15);
+					putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, temp);
+					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, mx, my, mx + 15, my + 15); /* マウス消す */
+					mx += mdecode.x;
+					my += mdecode.y;
+					if (mx < 0) {
+						mx = 0;
+					}
+					if (my < 0) {
+						my = 0;
+					}
+					if (mx > binfo->scrnx - 16) {
+						mx = binfo->scrnx - 16;
+					}
+					if (my > binfo->scrny - 16) {
+						my = binfo->scrny - 16;
+					}
+
+					sprintf(temp, "(%3d, %3d)", mx, my);
+					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 79, 15); /* 座標消す */
+					putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, temp); /* 座標書く */
+					putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 				}
 			}
 		}
@@ -108,12 +125,53 @@ void init_keyboard(void)
 #define KEYCMD_SENDTO_MOUSE		0xd4
 #define MOUSECMD_ENABLE			0xf4
 
-void enable_mouse(void)
+void enable_mouse(MOUSE_DESCODE *mdecode)
 {
 	/* マウス有効 */
 	wait_KBC_sendready();
 	io_out8(PORT_KEYCMD, KEYCMD_SENDTO_MOUSE);
 	wait_KBC_sendready();
 	io_out8(PORT_KEYDAT, MOUSECMD_ENABLE);
+	mdecode->phase = 0;
 	return; /* うまくいくとACK(0xfa)が送信されてくる */
+}
+
+int mouse_decode(MOUSE_DESCODE *mdecode, uchar data)
+{
+	if (mdecode->phase == 0) {
+		if (data == 0xfa) {
+			mdecode->phase = 1;
+		}
+		return 0;
+	}
+	if (mdecode->phase == 1) {
+		if ((data & 0xc8) == 0x08) {	//判读数据是否合理
+			mdecode->buf[0] = data;
+			mdecode->phase = 2;
+		}
+		return 0;
+	}
+	if (mdecode->phase == 2) {
+		mdecode->buf[1] = data;
+		mdecode->phase = 3;
+		return 0;
+	}
+	if (mdecode->phase == 3) {
+		/* マウスの3バイト目を待っている段階 */
+		mdecode->buf[2] = data;
+		mdecode->phase = 1;
+
+		mdecode->btn = mdecode->buf[0] & 0x07;	//取出鼠标的按键数据（按键信息在低3位）
+		mdecode->x = mdecode->buf[1];
+		mdecode->y = mdecode->buf[2];
+		if ((mdecode->buf[0] & 0x10) != 0) {		//切记！！！！加括号再进行比较
+			mdecode->x |= 0xffffff00;
+		}
+		if ((mdecode->buf[0] & 0x20) != 0) {
+			mdecode->y |= 0xffffff00;
+		}
+		mdecode->y = -mdecode->y;	//y方向与画面符号刚好相反
+		return 1;		//表示接收完毕
+	}
+	return -1;
 }

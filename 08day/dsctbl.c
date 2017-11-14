@@ -27,7 +27,7 @@ void init_gdtidt(void)
 	return;
 }
 
-void set_segmdesc(SEGMENT_DESC *sd, unsigned int limit, int base, int ar)
+void set_segmdesc(SEGMENT_DESC *sd, uint limit, int base, int ar)
 {
 	if (limit > 0xfffff) {	//即内存访问域大于1M
 		ar |= 0x8000; /* G_bit = 1 */

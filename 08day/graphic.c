@@ -4,22 +4,23 @@
 
 void init_palette(void)
 {
-	static unsigned char table_rgb[16 * 3] = { 0x00, 0x00, 0x00, /*  0:黒 */
-	0xff, 0x00, 0x00, /*  1:明るい赤 */
-	0x00, 0xff, 0x00, /*  2:明るい緑 */
-	0xff, 0xff, 0x00, /*  3:明るい黄色 */
-	0x00, 0x00, 0xff, /*  4:明るい青 */
-	0xff, 0x00, 0xff, /*  5:明るい紫 */
-	0x00, 0xff, 0xff, /*  6:明るい水色 */
-	0xff, 0xff, 0xff, /*  7:白 */
-	0xc6, 0xc6, 0xc6, /*  8:明るい灰色 */
-	0x84, 0x00, 0x00, /*  9:暗い赤 */
-	0x00, 0x84, 0x00, /* 10:暗い緑 */
-	0x84, 0x84, 0x00, /* 11:暗い黄色 */
-	0x00, 0x00, 0x84, /* 12:暗い青 */
-	0x84, 0x00, 0x84, /* 13:暗い紫 */
-	0x00, 0x84, 0x84, /* 14:暗い水色 */
-	0x84, 0x84, 0x84 /* 15:暗い灰色 */
+	static uchar table_rgb[16 * 3] = {
+		0x00, 0x00, 0x00, /*  0:黒 */
+		0xff, 0x00, 0x00, /*  1:明るい赤 */
+		0x00, 0xff, 0x00, /*  2:明るい緑 */
+		0xff, 0xff, 0x00, /*  3:明るい黄色 */
+		0x00, 0x00, 0xff, /*  4:明るい青 */
+		0xff, 0x00, 0xff, /*  5:明るい紫 */
+		0x00, 0xff, 0xff, /*  6:明るい水色 */
+		0xff, 0xff, 0xff, /*  7:白 */
+		0xc6, 0xc6, 0xc6, /*  8:明るい灰色 */
+		0x84, 0x00, 0x00, /*  9:暗い赤 */
+		0x00, 0x84, 0x00, /* 10:暗い緑 */
+		0x84, 0x84, 0x00, /* 11:暗い黄色 */
+		0x00, 0x00, 0x84, /* 12:暗い青 */
+		0x84, 0x00, 0x84, /* 13:暗い紫 */
+		0x00, 0x84, 0x84, /* 14:暗い水色 */
+		0x84, 0x84, 0x84 /* 15:暗い灰色 */
 	};
 	set_palette(0, 15, table_rgb);
 	return;
@@ -27,7 +28,7 @@ void init_palette(void)
 	/* static char 命令は、データにしか使えないけどDB命令相当 */
 }
 
-void set_palette(int start, int end, unsigned char *rgb)
+void set_palette(int start, int end, uchar *rgb)
 {
 	int i, eflags;
 	eflags = io_load_eflags(); /* 割り込み許可フラグの値を記録する */
@@ -43,7 +44,7 @@ void set_palette(int start, int end, unsigned char *rgb)
 	return;
 }
 
-void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1)
+void boxfill8(uchar *vram, int xsize, uchar c, int x0, int y0, int x1, int y1)
 {
 	int x, y;
 	for (y = y0; y <= y1; y++) {
@@ -109,7 +110,7 @@ void putfont8(char *vram, int xsize, int x, int y, char c, char *font)
 	return;
 }
 
-void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s)
+void putfonts8_asc(char *vram, int xsize, int x, int y, char c, uchar *s)
 {
 	extern char font[4096];
 	for (; *s != 0x00; s++) {
@@ -122,9 +123,24 @@ void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s
 void init_mouse_cursor8(char *mouse, char bc)
 /* マウスカーソルを準備（16x16） */
 {
-	static char cursor[16][16] = { "**************..", "*OOOOOOOOOOO*...", "*OOOOOOOOOO*....", "*OOOOOOOOO*.....", "*OOOOOOOO*......", "*OOOOOOO*.......",
-			"*OOOOOOO*.......", "*OOOOOOOO*......", "*OOOO**OOO*.....", "*OOO*..*OOO*....", "*OO*....*OOO*...", "*O*......*OOO*..", "**........*OOO*.",
-			"*..........*OOO*", "............*OO*", ".............***" };
+	static char cursor[16][16] = {
+		"**************..",
+		"*OOOOOOOOOOO*...",
+		"*O*O*O*O*OO*....",
+		"*OOOOOOOOO*.....",
+		"*O*O*O*OO*......",
+		"*OOOOOOO*.......",
+		"*O*O*O*O*.......",
+		"*OOOOOOOO*......",
+		"*O*OO**OOO*.....",
+		"*OOO*..*OOO*....",
+		"*OO*....*OOO*...",
+		"*O*......*OOO*..",
+		"**........*OOO*.",
+		"*..........*OOO*",
+		"............*OO*",
+		".............***"
+	};
 	int x, y;
 
 	for (y = 0; y < 16; y++) {

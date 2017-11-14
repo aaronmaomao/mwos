@@ -1,4 +1,7 @@
-/* asmhead.nas */
+/** common */
+#define uchar unsigned char
+#define uint unsigned int
+
 typedef struct BOOTINFO { /* 0x0ff0-0x0fff */
 	char cyls; /* ブートセクタはどこまでディスクを読んだのか */
 	char leds; /* ブート時のキーボードのLEDの状態 */
@@ -27,24 +30,23 @@ void asm_inthandler2c(void);
 
 /* fifo.c */
 typedef struct FIFO8 {
-	unsigned char *buf;
+	uchar *buf;
 	int p, q, size, free, flags;
 } FIFO8;
-void fifo8_init(FIFO8 *fifo, int size, unsigned char *buf);
-int fifo8_put(FIFO8 *fifo, unsigned char data);
+void fifo8_init(FIFO8 *fifo, int size, uchar *buf);
+int fifo8_put(FIFO8 *fifo, uchar data);
 int fifo8_get(FIFO8 *fifo);
 int fifo8_status(FIFO8 *fifo);
 
 /* graphic.c */
 void init_palette(void);
-void set_palette(int start, int end, unsigned char *rgb);
-void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1);
+void set_palette(int start, int end, uchar *rgb);
+void boxfill8(uchar *vram, int xsize, uchar c, int x0, int y0, int x1, int y1);
 void init_screen8(char *vram, int x, int y);
 void putfont8(char *vram, int xsize, int x, int y, char c, char *font);
-void putfonts8_asc(char *vram, int xsize, int x, int y, char c, unsigned char *s);
+void putfonts8_asc(char *vram, int xsize, int x, int y, char c, uchar *s);
 void init_mouse_cursor8(char *mouse, char bc);
-void putblock8_8(char *vram, int vxsize, int pxsize,
-	int pysize, int px0, int py0, char *buf, int bxsize);
+void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
 #define COL8_000000		0
 #define COL8_FF0000		1
 #define COL8_00FF00		2
@@ -62,7 +64,7 @@ void putblock8_8(char *vram, int vxsize, int pxsize,
 #define COL8_008484		14
 #define COL8_848484		15
 
-/* dsctbl.c */
+/** dsctbl.c */
 typedef struct SEGMENT_DESC {
 	short limit_low, base_low;
 	char base_mid, access_right;
@@ -74,7 +76,7 @@ typedef struct GATE_DESC {
 	short offset_high;
 } GATE_DESC;
 void init_gdtidt(void);
-void set_segmdesc(SEGMENT_DESC *sd, unsigned int limit, int base, int ar);
+void set_segmdesc(SEGMENT_DESC *sd, uint limit, int base, int ar);
 void set_gatedesc(GATE_DESC *gd, int offset, int selector, int ar);
 #define ADR_IDT			0x0026f800
 #define LIMIT_IDT		0x000007ff
