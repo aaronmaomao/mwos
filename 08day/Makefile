@@ -74,8 +74,10 @@ $(objp)%.gas: %.c Makefile
 #consolas16.bin: consolas16.txt Makefile
 #	$(makefont) consolas16.txt $(objp)consolas16.bin
 
-run: 
+run1: 
 	F:\vbox\install\VirtualBox.exe F:\vbox\mwos\mwos.vbox
+run2:
+	F:\install\vbox\install\VirtualBox.exe C:\Users\mao-zhengjun\vbox\mwos\mwos.vbox
 	
 clean:
 	del /Q .\obj\*.lst
