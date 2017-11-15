@@ -32,13 +32,14 @@ mov	[LEDS],	al
 ;	PICの初期化はあとでやる
 
 		MOV		AL,0xff
-		OUT		0x21,AL
+		OUT		0x21,AL	;屏蔽PIC1
 		NOP						; OUT命令を連続させるとうまくいかない機種があるらしいので
-		OUT		0xa1,AL
+		OUT		0xa1,AL	;屏蔽PIC2
 
-		CLI						; さらにCPUレベルでも割り込み禁止
+		CLI						; 禁止内部中断
 
 ; CPUから1MB以上のメモリにアクセスできるように、A20GATEを設定
+;为了让CPU能够访问1M以上的内存空间，设定A20GATE
 
 		CALL	waitkbdout
 		MOV		AL,0xd1
@@ -49,6 +50,7 @@ mov	[LEDS],	al
 		CALL	waitkbdout
 
 ; プロテクトモード移行
+;开始切换保护模式
 
 [INSTRSET "i486p"]				; 486の命令まで使いたいという記述
 
@@ -58,7 +60,7 @@ mov	[LEDS],	al
 		OR		EAX,0x00000001	; bit0を1にする（プロテクトモード移行のため）
 		MOV		CR0,EAX
 		JMP		pipelineflush
-pipelineflush:
+pipelineflush:	;设置可读写的段
 		MOV		AX,1*8			;  読み書き可能セグメント32bit
 		MOV		DS,AX
 		MOV		ES,AX
