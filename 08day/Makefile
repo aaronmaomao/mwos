@@ -76,6 +76,8 @@ $(objp)%.gas: %.c Makefile
 
 run1: 
 	F:\vbox\install\VirtualBox.exe F:\vbox\mwos\mwos.vbox
+debug1:
+	F:\vbox\install\VirtualBox.exe --startvm F:\vbox\mwos\mwos.vbox --debug
 run2:
 	F:\install\vbox\install\VirtualBox.exe C:\Users\mao-zhengjun\vbox\mwos\mwos.vbox
 debug2:
