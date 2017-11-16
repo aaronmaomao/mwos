@@ -78,6 +78,8 @@ run1:
 	F:\vbox\install\VirtualBox.exe F:\vbox\mwos\mwos.vbox
 run2:
 	F:\install\vbox\install\VirtualBox.exe C:\Users\mao-zhengjun\vbox\mwos\mwos.vbox
+debug2:
+	F:\install\vbox\install\VirtualBox.exe --startvm C:\Users\mao-zhengjun\vbox\mwos\mwos.vbox --debug
 	
 clean:
 	del /Q .\obj\*.lst
