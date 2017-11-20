@@ -1,9 +1,23 @@
 #include "bootpack.h"
 #include <stdio.h>
 
-extern FIFO8 keyfifo, mousefifo;
+#define MEMMAN_ADDR	 0x003c0000
+#define MEMMAN_FREES 4096
+
+typedef struct FREEINFO {
+	uint addr, size;
+} FREEINFO;
+
+typedef struct MEMMAN {
+	int frees, maxfress, lostsize, losts;
+	FREEINFO free[MEMMAN_FREES];
+} MEMMAN;
 
 uint memtest(uint start, uint end);
+void memman_init(MEMMAN *man);
+uint memman_total(MEMMAN *man);
+uint memman_alloc(MEMMAN *man, uint size);
+int memman_free(MEMMAN *man, uint addr, uint size);
 
 void HariMain(void)
 {
@@ -11,6 +25,8 @@ void HariMain(void)
 	char temp[40], mcursor[256], keybuf[32], mousebuf[128];
 	uint mx, my, dat;
 	MOUSE_DESCODE mdecode;
+	uint memtotal;
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 
 	init_gdtidt();
 	init_pic();
@@ -21,6 +37,11 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111) */
 
 	init_keyboard();
+	enable_mouse(&mdecode);
+
+	memtotal = memtest(0x00400000, 0xffffffff);	//获取最大内存地址
+	memman_init(memman);
+	memman_free(memman, 0x004000000, memtotal - 0x00400000);
 
 	init_palette();
 	init_screen8(binfo->vram, binfo->scrnx, binfo->scrny);
@@ -31,10 +52,7 @@ void HariMain(void)
 	sprintf(temp, "(%3d, %3d)", mx, my);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, temp);
 
-	enable_mouse(&mdecode);
-
-	dat = memtest(0x00400000, 0xbfffffff) / (1024 * 1024);
-	sprintf(temp, "memory size = %dMB", dat);
+	sprintf(temp, "memory = %dMB , free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 30, COL8_FFFFFF, temp);
 
 	for (;;) {
@@ -128,17 +146,6 @@ uint memtest(uint start, uint end)
 	return i;
 }
 
-#define MEMMAN_FREES 4096
-
-typedef struct FREEINFO {
-	uint addr, size;
-} FREEINFO;
-
-typedef struct MEMMAN {
-	int frees, maxfress, lostsize, losts;
-	FREEINFO free[MEMMAN_FREES];
-} MEMMAN;
-
 void memman_init(MEMMAN *man)
 {
 	man->frees = 0;
@@ -160,6 +167,9 @@ uint memman_total(MEMMAN *man)
 	return t;
 }
 
+/**
+ * 申请内存
+ */
 uint memman_alloc(MEMMAN *man, uint size)
 {
 	uint i, addr;
@@ -178,4 +188,60 @@ uint memman_alloc(MEMMAN *man, uint size)
 		}
 	}
 	return 0;
+}
+
+/**
+ * 释放内存(并且归纳内存)
+ */
+int memman_free(MEMMAN *man, uint addr, uint size)
+{
+	int i, j;
+	for (i = 0; i < man->frees; i++) {
+		if (man->free[i].addr > addr) {
+			break;
+		}
+	}
+
+	if (i > 0) {	//说明在 要释放的内存之前有空闲内存
+		if (man->free[i - 1].addr + man->free[i - 1].size == addr) {	//前归纳
+			man->free[i - 1].size += size;
+			if (i < man->frees) {	//归纳后检查后面的空闲内存是否与前面的接壤，是的话还可以归纳
+				if (addr + size == man->free[i].addr) {
+					man->free[i - 1].size += man->free[i].size;
+					man->frees--;
+					for (; i < man->frees; i++) {
+						man->free[i] = man->free[i + 1];	//将后面的结构体前移
+					}
+				}
+			}
+			return 0;	//释放（归纳）完成
+		}
+	}
+
+	if (i < man->frees) {
+		if (addr + size == man->free[i].addr) {	//后归纳
+			man->free[i].addr = addr;
+			man->free[i].size += size;
+			return 0;	//释放（归纳）完成
+		}
+	}
+
+	//既不能前归纳又不能后归纳
+	if (man->frees < MEMMAN_FREES) {	//管理表中还有空位
+		for (j = man->frees; j > i; j--) {	//把要释放的内存插在 i 处
+			man->free[j] = man->free[j - 1];	//把  i 后面的元素整体往后移一下（把 i 位置腾出来）
+		}
+		man->frees++;
+		if (man->maxfress < man->frees) {
+			man->maxfress = man->frees;
+		}
+		man->free[i].addr = addr;
+		man->free[i].size = size;
+		return 0;	//完成
+	}
+
+	//内存空闲管理表已满，只能lost掉了(⊙︿⊙)
+	man->losts++;
+	man->lostsize += size;
+	return -1;
 }

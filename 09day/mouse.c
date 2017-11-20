@@ -60,6 +60,7 @@ int mouse_decode(MOUSE_DESCODE *mdecode, uchar data)
 	return -1;
 }
 
+
 /** 来自ps2鼠标的中断处理 */
 void inthandler2c(int *esp)
 {

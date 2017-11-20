@@ -128,7 +128,7 @@ _asm_inthandler2c:
 _load_cr0:
 	mov		eax, cr0
 	ret
- _store_cr0:
+_store_cr0:
 	mov		eax, [esp+4]
 	mov		cr0, eax
 	ret

@@ -116,6 +116,7 @@ void inthandler2c(int *esp);
 #define KEYSTA_SEND_NOTREADY	0x02
 #define KEYCMD_WRITE_MODE		0x60
 #define KBC_MODE				0x47
+extern FIFO8 keyfifo;
 void wait_KBC_sendready(void);
 void init_keyboard(void);
 
@@ -126,5 +127,6 @@ typedef struct MOUSE_DESCODE {	//鼠标数据相关结构体
 	uchar buf[3], phase;
 	int x, y, btn;
 } MOUSE_DESCODE;
+extern FIFO8 mousefifo;
 int mouse_decode(MOUSE_DESCODE *mdecode, uchar data);
 void enable_mouse(MOUSE_DESCODE *mdecode);
