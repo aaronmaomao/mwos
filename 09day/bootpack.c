@@ -23,7 +23,7 @@ void HariMain(void)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
 	char temp[40], mcursor[256], keybuf[32], mousebuf[128];
-	uint mx, my, dat;
+	int mx, my, dat;
 	MOUSE_DESCODE mdecode;
 	uint memtotal;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
@@ -37,7 +37,6 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111) */
 
 	init_keyboard();
-	enable_mouse(&mdecode);
 
 	memtotal = memtest(0x00400000, 0xffffffff);	//获取最大内存地址
 	memman_init(memman);
@@ -54,6 +53,8 @@ void HariMain(void)
 
 	sprintf(temp, "memory = %dMB , free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 30, COL8_FFFFFF, temp);
+
+	enable_mouse(&mdecode);
 
 	for (;;) {
 		io_cli();

@@ -94,5 +94,6 @@ clean:
 	del /Q .\obj\*.bim
 	del /Q .\obj\*.map
 	del /Q .\obj\*.bin
+	del /Q .\obj\*.sys
 	
 	
