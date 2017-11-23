@@ -52,6 +52,11 @@ void HariMain(void)
 	sprintf(temp, "memory = %dMB , free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	putfonts8_asc(buf_back, binfo->scrnx, 0, 32, COL8_FFFFFF, temp);
 
+	sprintf(temp, "Hello Keven, this is OS design by mao !");
+	putfonts8_asc(buf_back, binfo->scrnx, 0, 70, COL8_FFFFFF, temp);
+	sprintf(temp, "You are the first one to use this OS !");
+	putfonts8_asc(buf_back, binfo->scrnx, 0, 90, COL8_FFFFFF, temp);
+
 	sheet_refresh(shtctl);
 
 	for (;;) {

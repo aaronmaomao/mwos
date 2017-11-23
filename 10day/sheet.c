@@ -137,6 +137,31 @@ void sheet_refresh(SHEETCTL *ctl)
 }
 
 /**
+ * 只刷新指定大小位置的区域
+ */
+void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1)
+{
+	int zindex, bufy, bufx, ly, lx;
+	SHEET *sht;
+	uchar *buf, color, *vram = ctl->vram;
+	for (zindex = 0; zindex <= ctl->top; zindex++) {
+		sht = ctl->sheetseq[zindex];
+		buf = sht->buf;
+		for (bufy = 0; bufy < sht->ysize; bufy++) {	//循环像素列
+			ly = bufy + sht->ly;
+			for (bufx = 0; bufx < sht->xsize; bufx++) {	//循环像素行
+				lx = bufx + sht->lx;
+				color = buf[bufy * sht->xsize + bufx];	//获取该图层该位置处的颜色
+				if (color != sht->col_inv) {		//如果不是透明色
+					vram[ly * ctl->xsize + lx] = color;	//把像素颜色放到显存对应位置处
+				}
+			}
+		}
+	}
+	return;
+}
+
+/**
  * 处理图层滑动
  */
 void sheet_slide(SHEETCTL *ctl, SHEET *sht, int lx, int ly)
