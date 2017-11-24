@@ -1,27 +1,17 @@
 #include "bootpack.h"
 #include <stdio.h>
 
-typedef struct SHEET {	//图层
-	uchar *buf;
-	int xsize, ysize, lx, ly, col_inv, zindex, flags;
-} SHEET;
-
-#define MAX_SHEETS 256		//最大图层数
-typedef struct SHEETCTL {	//所有图层管理(共9232byte)
-	uchar *vram;	//显存地址（只为方便）
-	int xsize, ysize, top;
-	SHEET *sheets_addr[MAX_SHEETS];
-	SHEET sheets[MAX_SHEETS];
-} SHEETCTL;
-
 void HariMain(void)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
-	char temp[40], mcursor[256], keybuf[32], mousebuf[128];
+	char temp[40], keybuf[32], mousebuf[128];
 	int mx, my, dat;
 	MOUSE_DESCODE mdecode;
 	uint memtotal;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
+	SHEETCTL *shtctl;
+	SHEET *sht_back, *sht_mouse;
+	uchar *buf_back, buf_mouse[16 * 16];
 
 	init_gdtidt();
 	init_pic();
@@ -32,24 +22,37 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111) */
 
 	init_keyboard();
+	enable_mouse(&mdecode);
 
 	memtotal = memtest(0x00400000, 0xffffffff);	//获取最大内存地址
 	memman_init(memman);
 	memman_free(memman, 0x004000000, memtotal - 0x00400000);	//将最大空闲内存放入管理表中
 
 	init_palette();
-	init_screen8(binfo->vram, binfo->scrnx, binfo->scrny);
+	shtctl = sheetctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
+	sht_back = sheet_alloc(shtctl);
+	sht_mouse = sheet_alloc(shtctl);
+	buf_back = (uchar *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
+	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);
+	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);
+
+	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
+	init_mouse_cursor8(buf_mouse, 99);
+
+	sheet_slide(shtctl, sht_back, 0, 0);
 	mx = (binfo->scrnx - 16) / 2; /* 画面中央になるように座標計算 */
 	my = (binfo->scrny - 28 - 16) / 2;
-	init_mouse_cursor8(mcursor, COL8_008484);
-	putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
+	sheet_slide(shtctl, sht_mouse, mx, my);
+	sheet_updown(shtctl, sht_back, 0);
+	sheet_updown(shtctl, sht_mouse, 1);
+
 	sprintf(temp, "(%3d, %3d)", mx, my);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, temp);
+	putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, temp);
 
 	sprintf(temp, "memory = %dMB , free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
-	putfonts8_asc(binfo->vram, binfo->scrnx, 0, 30, COL8_FFFFFF, temp);
+	putfonts8_asc(buf_back, binfo->scrnx, 0, 32, COL8_FFFFFF, temp);
 
-	enable_mouse(&mdecode);
+	sheet_refresh(shtctl);
 
 	for (;;) {
 		io_cli();
@@ -60,15 +63,14 @@ void HariMain(void)
 				dat = fifo8_get(&keyfifo);
 				io_sti();
 				sprintf(temp, "%02X", dat);
-				boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 16, 15, 31);
-				putfonts8_asc(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, temp);
+				boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 16, 15, 31);
+				putfonts8_asc(buf_back, binfo->scrnx, 0, 16, COL8_FFFFFF, temp);
+				sheet_refresh(shtctl);
 			} else if (fifo8_status(&mousefifo) != 0) {
 				dat = fifo8_get(&mousefifo);
 				io_sti();
 				if (mouse_decode(&mdecode, dat) != 0) {
 					sprintf(temp, "[lcr %4d %4d]", mdecode.x, mdecode.y);
-					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
-					putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, temp);
 					if ((mdecode.btn & 0x01) != 0) {
 						temp[1] = 'L';
 					}
@@ -78,9 +80,8 @@ void HariMain(void)
 					if ((mdecode.btn & 0x04) != 0) {
 						temp[2] = 'C';
 					}
-					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, mx, my, mx + 15, my + 15);
-					putfonts8_asc(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, temp);
-					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, mx, my, mx + 15, my + 15); /* マウス消す */
+					boxfill8(buf_back, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
+					putfonts8_asc(buf_back, binfo->scrnx, 32, 16, COL8_FFFFFF, temp);
 					mx += mdecode.x;
 					my += mdecode.y;
 					if (mx < 0) {
@@ -97,53 +98,12 @@ void HariMain(void)
 					}
 
 					sprintf(temp, "(%3d, %3d)", mx, my);
-					boxfill8(binfo->vram, binfo->scrnx, COL8_008484, 0, 0, 79, 15); /* 座標消す */
-					putfonts8_asc(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, temp); /* 座標書く */
-					putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
+					boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 0, 79, 15); /* 座標消す */
+					putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, temp); /* 座標書く */
+					sheet_slide(shtctl, sht_mouse, mx, my);
 				}
 			}
 		}
 	}
-}
-
-/**
- * 生成一个图层管理表
- */
-SHEETCTL *sheetctl_init(MEMMAN *memman, uchar *vram, int xsize, int ysize)
-{
-	SHEETCTL *ctl;
-	int i;
-	ctl = (SHEETCTL *) memman_alloc_4k(memman, sizeof(SHEETCTL));
-	if (ctl == 0) {
-		goto err;
-	}
-	ctl->vram = vram;
-	ctl->xsize = xsize;
-	ctl->ysize = ysize;
-	ctl->top = -1;	//一个图层都没有
-	for (i = 0; i < MAX_SHEETS; i++) {
-		ctl->sheets[i].flags = 0;	//标记为未使用
-	}
-	err: return ctl;
-}
-
-#define SHEET_USE 1
-
-/**
- * 申请一个空闲的图层
- */
-SHEET *sheet_alloc(SHEETCTL *ctl)
-{
-	SHEET *sheet;
-	int i;
-	for (i = 0; i < MAX_SHEETS; i++) {
-		if (ctl->sheets[i].flags == 0) {
-			sheet = &(ctl->sheets[i]);	//取得空闲图层的地址
-			sheet->flags = SHEET_USE;	//标记为该图层正在使用
-			sheet->zindex = -1;	//影藏
-			return sheet;
-		}
-	}
-	return 0;	//没图层了
 }
 
