@@ -162,7 +162,7 @@ uint memman_free_4k(MEMMAN *man, uint addr, uint size);	//以4k为单位释放�
 
 typedef struct SHEET {	//图层
 	uchar *buf;
-	int xsize, ysize, lx, ly, col_inv, zindex, flags;
+	int xsize, ysize, lx, ly, col_inv, zindex, flags;	//col_inv记录本图层的透明标识
 } SHEET;
 
 typedef struct SHEETCTL {	//所有图层管理(共9232byte)
@@ -196,6 +196,10 @@ void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex);
  * 刷新所有图层(从最里面的图层开始，将每个图层的非透明的像素放到对应显存位置，类似于"千手观音"原理)
  */
 void sheet_refresh(SHEETCTL *ctl);
+/**
+ * 只刷新指定大小位置的区域
+ */
+void sheet_refreshsub(SHEETCTL *ctl, int vx, int vy, int subxsize, int subysize);
 /**
  * 处理图层滑动
  */
