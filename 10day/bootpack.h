@@ -156,3 +156,51 @@ uint memman_alloc(MEMMAN *man, uint size);
 int memman_free(MEMMAN *man, uint addr, uint size);
 uint memman_alloc_4k(MEMMAN *man, uint size);	//以4k为单位分配内存
 uint memman_free_4k(MEMMAN *man, uint addr, uint size);	//以4k为单位释放内存
+
+/** sheet.c */
+#define MAX_SHEETS 256		//最大图层数
+
+typedef struct SHEET {	//图层
+	uchar *buf;
+	int xsize, ysize, lx, ly, col_inv, zindex, flags;
+} SHEET;
+
+typedef struct SHEETCTL {	//所有图层管理(共9232byte)
+	uchar *vram;	//显存地址（只为方便）
+	int xsize, ysize, top;
+	SHEET *sheetseq[MAX_SHEETS];	//图层的序列，低zindex的在前面，高zindex的在后面
+	SHEET sheets[MAX_SHEETS];
+} SHEETCTL;
+
+/**
+ * 生成一个图层管理表
+ */
+SHEETCTL *sheetctl_init(MEMMAN *memman, uchar *vram, int xsize, int ysize);
+/**
+ * 申请一个空闲的图层
+ */
+SHEET *sheet_alloc(SHEETCTL *ctl);
+/**
+ * 申请一个空闲的图层
+ */
+SHEET *sheet_alloc(SHEETCTL *ctl);
+/**
+ * 设置图层参数
+ */
+void sheet_setbuf(SHEET *sht, uchar *buf, int xsize, int ysize, int col_inv);
+/**
+ * 移动图层位置
+ */
+void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex);
+/**
+ * 刷新所有图层(从最里面的图层开始，将每个图层的非透明的像素放到对应显存位置，类似于"千手观音"原理)
+ */
+void sheet_refresh(SHEETCTL *ctl);
+/**
+ * 处理图层滑动
+ */
+void sheet_slide(SHEETCTL *ctl, SHEET *sht, int lx, int ly);
+/**
+ * 释放图层
+ */
+void sheet_free(SHEETCTL *ctl, SHEET *sht);

@@ -11,7 +11,8 @@ bootobjs = $(objp)bootpack.obj \
 		   $(objp)fifo.obj \
 		   $(objp)mouse.obj \
 		   $(objp)keyboard.obj \
-		   $(objp)memory.obj
+		   $(objp)memory.obj \
+		   $(objp)sheet.obj
 
 make = $(toolpath)make.exe -r
 #制作img镜像
