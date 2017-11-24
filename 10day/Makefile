@@ -79,11 +79,11 @@ $(objp)%.gas: %.c Makefile
 #	$(makefont) consolas16.txt $(objp)consolas16.bin
 
 run1: 
-	F:\vbox\install\VirtualBox.exe F:\vbox\mwos\mwos.vbox
+	F:\vbox\install\VirtualBox.exe --startvm F:\vbox\mwos\mwos.vbox
 debug1:
 	F:\vbox\install\VirtualBox.exe --startvm F:\vbox\mwos\mwos.vbox --debug
 run2:
-	F:\install\vbox\install\VirtualBox.exe C:\Users\mao-zhengjun\vbox\mwos\mwos.vbox
+	F:\install\vbox\install\VirtualBox.exe --startvm C:\Users\mao-zhengjun\vbox\mwos\mwos.vbox
 debug2:
 	F:\install\vbox\install\VirtualBox.exe --startvm C:\Users\mao-zhengjun\vbox\mwos\mwos.vbox --debug
 	

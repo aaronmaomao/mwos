@@ -7,7 +7,7 @@ typedef struct BOOTINFO { /* 0x0ff0-0x0fff */
 	char leds; /* ブート時のキーボードのLEDの状態 */
 	char vmode; /* ビデオモード  何ビットカラーか */
 	char reserve;
-	short scrnx, scrny; /* 画面解像度 */
+	short scrnx, scrny; /* 分辨率大小 */
 	char *vram;
 } BOOTINFO;
 
