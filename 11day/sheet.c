@@ -144,6 +144,18 @@ void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1)
 	int zindex, bufy, bufx, ly, lx, tbufx0, tbufy0, tbufx1, tbufy1;
 	SHEET *sht;
 	uchar *buf, color, *vram = ctl->vram;
+	if (vx0 < 0) {
+		vx0 = 0;
+	}
+	if (vy0 < 0) {
+		vy0 = 0;
+	}
+	if (vx1 > ctl->xsize) {
+		vx1 = ctl->xsize;
+	}
+	if (vy1 > ctl->ysize) {
+		vy1 = ctl->ysize;
+	}
 	for (zindex = 0; zindex <= ctl->top; zindex++) {
 		sht = ctl->sheetseq[zindex];
 		buf = sht->buf;
