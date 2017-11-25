@@ -70,7 +70,7 @@ void HariMain(void)
 				sprintf(temp, "%02X", dat);
 				boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 16, 15, 31);
 				putfonts8_asc(buf_back, binfo->scrnx, 0, 16, COL8_FFFFFF, temp);
-				sheet_refresh(shtctl);
+				sheet_refreshsub(shtctl, 0, 16, 15, 31);
 			} else if (fifo8_status(&mousefifo) != 0) {
 				dat = fifo8_get(&mousefifo);
 				io_sti();
@@ -87,6 +87,7 @@ void HariMain(void)
 					}
 					boxfill8(buf_back, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
 					putfonts8_asc(buf_back, binfo->scrnx, 32, 16, COL8_FFFFFF, temp);
+					sheet_refreshsub(shtctl, 32, 16, 32 + 15 * 8 - 1, 31);
 					mx += mdecode.x;
 					my += mdecode.y;
 					if (mx < 0) {
@@ -105,6 +106,7 @@ void HariMain(void)
 					sprintf(temp, "(%3d, %3d)", mx, my);
 					boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 0, 79, 15); /* 座標消す */
 					putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, temp); /* 座標書く */
+					sheet_refreshsub(shtctl, 0, 0, 79, 15);
 					sheet_slide(shtctl, sht_mouse, mx, my);
 				}
 			}

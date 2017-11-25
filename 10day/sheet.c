@@ -81,8 +81,7 @@ void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex)
 				ctl->sheetseq[tempindex]->zindex = tempindex;	//重设调整后图层的zindex
 			}
 			ctl->sheetseq[zindex] = sht;
-		}
-		else {	//隐藏
+		} else {	//隐藏
 			if (ctl->top > oldindex) {
 				for (tempindex = oldindex; tempindex < ctl->top; tempindex++) {	//去掉隐藏图层
 					ctl->sheetseq[tempindex] = ctl->sheetseq[tempindex + 1];	//调整图层位置（类似于列队中走了一个人）
@@ -92,16 +91,14 @@ void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex)
 			ctl->top--;
 		}
 		sheet_refresh(ctl);
-	}
-	else if (zindex > oldindex) {		//比以前高
+	} else if (zindex > oldindex) {		//比以前高
 		if (oldindex >= 0) {	//之前是非隐藏状态
 			for (tempindex = oldindex; tempindex < zindex; tempindex++) {
 				ctl->sheetseq[tempindex] = ctl->sheetseq[tempindex + 1];	//调整队伍，类似于前面的人往后调位置
 				ctl->sheetseq[tempindex]->zindex = tempindex;
 			}
 			ctl->sheetseq[zindex] = sht;	//调位成功
-		}
-		else {	//之前是隐藏状态
+		} else {	//之前是隐藏状态
 			for (tempindex = ctl->top; tempindex >= zindex; tempindex--) {
 				ctl->sheetseq[tempindex + 1] = ctl->sheetseq[tempindex];	//我靠，有人在插队￣へ￣
 				ctl->sheetseq[tempindex + 1]->zindex = tempindex + 1;
@@ -144,20 +141,37 @@ void sheet_refresh(SHEETCTL *ctl)
  */
 void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1)
 {
-	int zindex, bufy, bufx, ly, lx, ty, tx;
+	int zindex, bufy, bufx, ly, lx, tbufx0, tbufy0, tbufx1, tbufy1;
 	SHEET *sht;
 	uchar *buf, color, *vram = ctl->vram;
 	for (zindex = 0; zindex <= ctl->top; zindex++) {
 		sht = ctl->sheetseq[zindex];
 		buf = sht->buf;
-
-		if (vy0 > sht->ly && vx0 > sht->ly) {	//（左上）该区域位于该图层的位置
+		tbufx0 = vx0 - sht->lx;
+		tbufy0 = vy0 - sht->ly;
+		tbufx1 = vx1 - sht->lx;
+		tbufy1 = vy1 - sht->ly;
+		if (tbufx0 < 0) {	//把要刷新部分的像素从图层中括出来
+			tbufx0 = 0;
 		}
-		else if (vy0 > sht->ly && vx0 < sht->ly) {	//右上
+		if (tbufy0 < 0) {
+			tbufy0 = 0;
 		}
-		else if (vy0 < sht->ly && vx0 > sht->ly) {	//左下
+		if (tbufx1 < sht->xsize) {
+			tbufx1 = sht->xsize;
 		}
-		else if (vy0 < sht->ly && vx0 < sht->ly) {	//右下
+		if (tbufy1 < sht->ysize) {
+			tbufy1 = sht->ysize;
+		}
+		for (bufy = tbufy0; bufy < tbufy1; bufy++) {
+			ly = sht->ly + bufy;
+			for (bufx = tbufx0; bufx < tbufx1; bufx++) {
+				lx = sht->lx + bufx;
+				color = sht->buf[bufy * sht->xsize + bufx];
+				if (color != sht->col_inv) {		//如果不是透明色
+					vram[ly * ctl->xsize + lx] = color;	//把像素颜色放到显存对应位置处
+				}
+			}
 		}
 	}
 	return;
