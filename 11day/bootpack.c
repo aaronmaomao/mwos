@@ -1,17 +1,19 @@
 #include "bootpack.h"
 #include <stdio.h>
 
+void make_window8(uchar *buf, int xsize, int ysize, char *title);
+
 void HariMain(void)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
 	char temp[40], keybuf[32], mousebuf[128];
 	int mx, my, dat;
 	MOUSE_DESCODE mdecode;
-	uint memtotal;
+	uint memtotal, count = 0;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 	SHEETCTL *shtctl;
-	SHEET *sht_back, *sht_mouse;
-	uchar *buf_back, buf_mouse[16 * 16];
+	SHEET *sht_back, *sht_mouse, *sht_win;
+	uchar *buf_back, buf_mouse[16 * 16], *buf_win;
 
 	init_gdtidt();
 	init_pic();
@@ -32,37 +34,44 @@ void HariMain(void)
 	shtctl = sheetctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
 	sht_back = sheet_alloc(shtctl);
 	sht_mouse = sheet_alloc(shtctl);
+	sht_win = sheet_alloc(shtctl);
 	buf_back = (uchar *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
+	buf_win = (uchar *)memman_alloc_4k(memman, 160 * 52);
 	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);
 	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);
+	sheet_setbuf(sht_win, buf_win, 160, 52, -1);
 
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
 	init_mouse_cursor8(buf_mouse, 99);
+	make_window8(buf_win, 160, 52, "counter");
 
-	sheet_slide(shtctl, sht_back, 0, 0);
+	sheet_slide(sht_back, 0, 0);
 	mx = (binfo->scrnx - 16) / 2; /* 画面中央になるように座標計算 */
 	my = (binfo->scrny - 28 - 16) / 2;
-	sheet_slide(shtctl, sht_mouse, mx, my);
-	sheet_updown(shtctl, sht_back, 0);
-	sheet_updown(shtctl, sht_mouse, 1);
+	sheet_slide(sht_mouse, mx, my);
+	sheet_slide(sht_win, 80, 72);
+	sheet_updown(sht_back, 0);
+	sheet_updown(sht_win, 1);
+	sheet_updown(sht_mouse, 2);
 
 	sprintf(temp, "(%3d, %3d)", mx, my);
 	putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, temp);
 
-	sprintf(temp, "memory = %dMB , free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
+	sprintf(temp, "memory = %dMB ,   free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	putfonts8_asc(buf_back, binfo->scrnx, 0, 32, COL8_FFFFFF, temp);
 
-	sprintf(temp, "Hello Keven, this is OS design by mao !");
-	putfonts8_asc(buf_back, binfo->scrnx, 0, 70, COL8_FFFFFF, temp);
-	sprintf(temp, "You are the first one to use this OS !");
-	putfonts8_asc(buf_back, binfo->scrnx, 0, 90, COL8_FFFFFF, temp);
-
-	sheet_refresh(shtctl);
+	sheet_refresh(sht_back, 0, 0, binfo->scrnx, 48);
 
 	for (;;) {
+		count++;
+		sprintf(temp, "%010d", count);
+		boxfill8(buf_win, 160, COL8_C6C6C6, 40, 28, 119, 43);
+		putfonts8_asc(buf_win,160, 40, 28,COL8_000000, temp);
+
+		sheet_refresh(sht_win, 40, 28, 120, 44);
 		io_cli();
 		if (fifo8_status(&keyfifo) + fifo8_status(&mousefifo) == 0) {
-			io_stihlt();
+			io_sti();
 		} else {
 			if (fifo8_status(&keyfifo) != 0) {
 				dat = fifo8_get(&keyfifo);
@@ -70,7 +79,7 @@ void HariMain(void)
 				sprintf(temp, "%02X", dat);
 				boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 16, 15, 31);
 				putfonts8_asc(buf_back, binfo->scrnx, 0, 16, COL8_FFFFFF, temp);
-				sheet_refreshsub(shtctl, 0, 16, 15, 31);
+				sheet_refresh(sht_back, 0, 16, 15, 31);
 			} else if (fifo8_status(&mousefifo) != 0) {
 				dat = fifo8_get(&mousefifo);
 				io_sti();
@@ -87,7 +96,7 @@ void HariMain(void)
 					}
 					boxfill8(buf_back, binfo->scrnx, COL8_008484, 32, 16, 32 + 15 * 8 - 1, 31);
 					putfonts8_asc(buf_back, binfo->scrnx, 32, 16, COL8_FFFFFF, temp);
-					sheet_refreshsub(shtctl, 32, 16, 32 + 15 * 8 - 1, 31);
+					sheet_refresh(sht_back, 32, 16, 32 + 15 * 8 - 1, 31);
 					mx += mdecode.x;
 					my += mdecode.y;
 					if (mx < 0) {
@@ -106,11 +115,65 @@ void HariMain(void)
 					sprintf(temp, "(%3d, %3d)", mx, my);
 					boxfill8(buf_back, binfo->scrnx, COL8_008484, 0, 0, 79, 15); /* 座標消す */
 					putfonts8_asc(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, temp); /* 座標書く */
-					sheet_refreshsub(shtctl, 0, 0, 79, 15);
-					sheet_slide(shtctl, sht_mouse, mx, my);
+					sheet_refresh(sht_back, 0, 0, 80, 16);
+					sheet_slide(sht_mouse, mx, my);
 				}
 			}
 		}
 	}
+}
+
+//绘制窗口
+void make_window8(uchar *buf, int xsize, int ysize, char *title)
+{
+	static char closebtn[14][16] = {
+			"OOOOOOOOOOOOOOO@",
+			"OQQQQQQQQQQQQQ$@",
+			"OQQQQQQQQQQQQQ$@",
+			"OQQQ@@QQQQ@@QQ$@",
+			"OQQQQ@@QQ@@QQQ$@",
+			"OQQQQQ@@@@QQQQ$@",
+			"OQQQQQQ@@QQQQQ$@",
+			"OQQQQQ@@@@QQQQ$@",
+			"OQQQQ@@QQ@@QQQ$@",
+			"OQQQ@@QQQQ@@QQ$@",
+			"OQQQQQQQQQQQQQ$@",
+			"OQQQQQQQQQQQQQ$@",
+			"O$$$$$$$$$$$$$$@",
+			"@@@@@@@@@@@@@@@@"
+	};
+	int x, y;
+	char color;
+	boxfill8(buf, xsize, COL8_C6C6C6, 0, 0, xsize - 1, 0);
+	boxfill8(buf, xsize, COL8_FFFFFF, 1, 1, xsize - 2, 1);
+	boxfill8(buf, xsize, COL8_C6C6C6, 0, 0, 0, ysize - 1);
+	boxfill8(buf, xsize, COL8_FFFFFF, 1, 1, 1, ysize - 2);
+	boxfill8(buf, xsize, COL8_848484, xsize - 2, 1, xsize - 2, ysize - 2);
+	boxfill8(buf, xsize, COL8_000000, xsize - 1, 0, xsize - 1, ysize - 1);
+	boxfill8(buf, xsize, COL8_C6C6C6, 2, 2, xsize - 3, ysize - 3);
+	boxfill8(buf, xsize, COL8_000084, 3, 3, xsize - 4, 20);
+	boxfill8(buf, xsize, COL8_848484, 1, ysize - 2, xsize - 2, ysize - 2);
+	boxfill8(buf, xsize, COL8_000000, 0, ysize - 1, xsize - 1, ysize - 1);
+	putfonts8_asc(buf, xsize, 24, 4, COL8_FFFFFF, title);		//放置title字符串
+	for (y = 0; y < 14; y++) {	//放置btn
+		for (x = 0; x < 16; x++) {
+
+			switch (closebtn[y][x]) {
+			case '@':
+				color = COL8_000000;
+				break;
+			case 'Q':
+				color = COL8_C6C6C6;
+				break;
+			case '$':
+				color = COL8_848484;
+				break;
+			default:
+				color = COL8_FFFFFF;
+			}
+			buf[(5 + y) * xsize + (xsize - 21 + x)] = color;
+		}
+	}
+	return;
 }
 

@@ -146,7 +146,7 @@ typedef struct FREEINFO {
 
 typedef struct MEMMAN {
 	int frees, maxfress, lostsize, losts;
-	FREEINFO free[MEMMAN_FREES];
+	struct FREEINFO free[MEMMAN_FREES];
 } MEMMAN;
 
 uint memtest(uint start, uint end);
@@ -163,13 +163,15 @@ uint memman_free_4k(MEMMAN *man, uint addr, uint size);	//以4k为单位释放�
 typedef struct SHEET {	//图层
 	uchar *buf;
 	int xsize, ysize, lx, ly, col_inv, zindex, flags;	//col_inv记录本图层的透明标识
+	struct SHEETCTL *ctl;
 } SHEET;
 
 typedef struct SHEETCTL {	//所有图层管理(共9232byte)
-	uchar *vram;	//显存地址（只为方便）
+	uchar *vram;	//显存地址
+	uchar *map;	//用来记录每一个像素点是由哪个图层显示出来的
 	int xsize, ysize, top;
-	SHEET *sheetseq[MAX_SHEETS];	//图层的序列，低zindex的在前面，高zindex的在后面
-	SHEET sheets[MAX_SHEETS];
+	struct SHEET *sheetseq[MAX_SHEETS];	//图层的序列，低zindex的在前面，高zindex的在后面
+	struct SHEET sheets[MAX_SHEETS];
 } SHEETCTL;
 
 /**
@@ -181,30 +183,28 @@ SHEETCTL *sheetctl_init(MEMMAN *memman, uchar *vram, int xsize, int ysize);
  */
 SHEET *sheet_alloc(SHEETCTL *ctl);
 /**
- * 申请一个空闲的图层
- */
-SHEET *sheet_alloc(SHEETCTL *ctl);
-/**
  * 设置图层参数
  */
 void sheet_setbuf(SHEET *sht, uchar *buf, int xsize, int ysize, int col_inv);
 /**
  * 移动图层位置
  */
-void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex);
+void sheet_updown(SHEET *sht, int zindex);
 /**
  * 刷新所有图层(从最里面的图层开始，将每个图层的非透明的像素放到对应显存位置，类似于"千手观音"原理)
  */
-void sheet_refresh(SHEETCTL *ctl);
+void sheet_refresh(SHEET *sht, int vx0, int vy0, int vx1, int vy1);
 /**
  * 只刷新指定大小位置的区域
  */
-void sheet_refreshsub(SHEETCTL *ctl, int vx, int vy, int subxsize, int subysize);
+void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zindex0, int zindex1);
+
+void sheet_refreshmap(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zindex);
 /**
  * 处理图层滑动
  */
-void sheet_slide(SHEETCTL *ctl, SHEET *sht, int lx, int ly);
+void sheet_slide(SHEET *sht, int lx, int ly);
 /**
  * 释放图层
  */
-void sheet_free(SHEETCTL *ctl, SHEET *sht);
+void sheet_free(SHEET *sht);

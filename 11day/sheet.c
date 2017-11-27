@@ -18,12 +18,18 @@ SHEETCTL *sheetctl_init(MEMMAN *memman, uchar *vram, int xsize, int ysize)
 	if (ctl == 0) {
 		goto err;
 	}
+	ctl->map = (uchar *) memman_alloc_4k(memman, xsize * ysize);
+	if (ctl->map == 0) {
+		memman_free_4k(memman, (int)ctl, sizeof(SHEETCTL));
+		goto err;
+	}
 	ctl->vram = vram;
 	ctl->xsize = xsize;
 	ctl->ysize = ysize;
 	ctl->top = -1;	//一个图层都没有
 	for (i = 0; i < MAX_SHEETS; i++) {
 		ctl->sheets[i].flags = 0;	//标记为未使用
+		ctl->sheets[i].ctl = ctl;
 	}
 	err: return ctl;
 }
@@ -63,9 +69,10 @@ void sheet_setbuf(SHEET *sht, uchar *buf, int xsize, int ysize, int col_inv)
 /**
  * 移动图层位置
  */
-void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex)
+void sheet_updown(SHEET *sht, int zindex)
 {
 	int tempindex, oldindex = sht->zindex;
+	SHEETCTL *ctl = sht->ctl;
 	if (zindex > ctl->top + 1) {
 		zindex = ctl->top + 1;
 	}
@@ -81,6 +88,8 @@ void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex)
 				ctl->sheetseq[tempindex]->zindex = tempindex;	//重设调整后图层的zindex
 			}
 			ctl->sheetseq[zindex] = sht;
+			sheet_refreshmap(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, zindex + 1);
+			sheet_refreshsub(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, zindex + 1, oldindex);
 		} else {	//隐藏
 			if (ctl->top > oldindex) {
 				for (tempindex = oldindex; tempindex < ctl->top; tempindex++) {	//去掉隐藏图层
@@ -89,8 +98,9 @@ void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex)
 				}
 			}
 			ctl->top--;
+			sheet_refreshmap(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, 0);
+			sheet_refreshsub(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, 0, oldindex - 1);
 		}
-		sheet_refresh(ctl);
 	} else if (zindex > oldindex) {		//比以前高
 		if (oldindex >= 0) {	//之前是非隐藏状态
 			for (tempindex = oldindex; tempindex < zindex; tempindex++) {
@@ -106,7 +116,8 @@ void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex)
 			ctl->sheetseq[zindex] = sht;	//没办法，插就插吧 (T＿T)
 			ctl->top++;	//队伍加一
 		}
-		sheet_refresh(ctl);
+		sheet_refreshmap(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, zindex);
+		sheet_refreshsub(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, zindex, zindex);
 	}
 	return;
 }
@@ -114,36 +125,23 @@ void sheet_updown(SHEETCTL *ctl, SHEET *sht, int zindex)
 /**
  * 刷新所有图层(从最里面的图层开始，将每个图层的非透明的像素放到对应显存位置，类似于"千手观音"原理)
  */
-void sheet_refresh(SHEETCTL *ctl)
+void sheet_refresh(SHEET *sht, int vx0, int vy0, int vx1, int vy1)
 {
-	int zindex, bufy, bufx, ly, lx;
-	SHEET *sht;
-	uchar *buf, color, *vram = ctl->vram;
-	for (zindex = 0; zindex <= ctl->top; zindex++) {
-		sht = ctl->sheetseq[zindex];
-		buf = sht->buf;
-		for (bufy = 0; bufy < sht->ysize; bufy++) {	//循环所有像素列
-			ly = bufy + sht->ly;
-			for (bufx = 0; bufx < sht->xsize; bufx++) {	//循环所有像素行
-				lx = bufx + sht->lx;
-				color = buf[bufy * sht->xsize + bufx];	//获取该图层该位置处的颜色
-				if (color != sht->col_inv) {		//如果不是透明色
-					vram[ly * ctl->xsize + lx] = color;	//把像素颜色放到显存对应位置处
-				}
-			}
-		}
+	if (sht->zindex >= 0) {
+		sheet_refreshsub(sht->ctl, sht->lx + vx0, sht->ly + vy0, sht->lx + vx1, sht->ly + vy1, sht->zindex, sht->zindex);
 	}
 	return;
 }
 
 /**
  * 只刷新指定大小位置的区域
+ * zindex: 刷新该层级以上的图层
  */
-void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1)
+void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zindex0, int zindex1)
 {
-	int zindex, bufy, bufx, ly, lx, tbufx0, tbufy0, tbufx1, tbufy1;
+	int index, bufy, bufx, ly, lx, tbufx0, tbufy0, tbufx1, tbufy1;
 	SHEET *sht;
-	uchar *buf, color, *vram = ctl->vram;
+	uchar *buf, sid, *vram = ctl->vram, *map = ctl->map;
 	if (vx0 < 0) {
 		vx0 = 0;
 	}
@@ -156,9 +154,10 @@ void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1)
 	if (vy1 > ctl->ysize) {
 		vy1 = ctl->ysize;
 	}
-	for (zindex = 0; zindex <= ctl->top; zindex++) {
-		sht = ctl->sheetseq[zindex];
+	for (index = zindex0; index <= zindex1; index++) {
+		sht = ctl->sheetseq[index];
 		buf = sht->buf;
+		sid = sht - ctl->sheets;
 		tbufx0 = vx0 - sht->lx;
 		tbufy0 = vy0 - sht->ly;
 		tbufx1 = vx1 - sht->lx;
@@ -179,9 +178,57 @@ void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1)
 			ly = sht->ly + bufy;
 			for (bufx = tbufx0; bufx < tbufx1; bufx++) {
 				lx = sht->lx + bufx;
-				color = sht->buf[bufy * sht->xsize + bufx];
-				if (color != sht->col_inv) {		//如果不是透明色
-					vram[ly * ctl->xsize + lx] = color;	//把像素颜色放到显存对应位置处
+				if (map[ly * ctl->xsize + lx] == sid) {		//如果当前像素点包含在当前图层内，则刷新
+					vram[ly * ctl->xsize + lx] = buf[bufy * sht->xsize + bufx];	//把像素颜色放到显存对应位置处
+				}
+			}
+		}
+	}
+	return;
+}
+
+void sheet_refreshmap(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zindex)
+{
+	int index, bufy, bufx, ly, lx, tbufx0, tbufy0, tbufx1, tbufy1;
+	SHEET *sht;
+	uchar *buf, sid, *map = ctl->map;
+	if (vx0 < 0) {
+		vx0 = 0;
+	}
+	if (vy0 < 0) {
+		vy0 = 0;
+	}
+	if (vx1 > ctl->xsize) {
+		vx1 = ctl->xsize;
+	}
+	if (vy1 > ctl->ysize) {
+		vy1 = ctl->ysize;
+	}
+	for (index = zindex; index <= ctl->top; index++) {
+		sht = ctl->sheetseq[index];
+		buf = sht->buf;
+		sid = sht - ctl->sheets;	//得到的是 当前图层地址 基于图层数组的 地址增量
+		tbufx0 = vx0 - sht->lx;
+		tbufy0 = vy0 - sht->ly;
+		tbufx1 = vx1 - sht->lx;
+		tbufy1 = vy1 - sht->ly;
+		if (tbufx0 < 0) {	//把要刷新部分的像素从图层中括出来
+			tbufx0 = 0;
+		}
+		if (tbufy0 < 0) {
+			tbufy0 = 0;
+		}
+		if (tbufx1 > sht->xsize) {
+			tbufx1 = sht->xsize;
+		}
+		if (tbufy1 > sht->ysize) {
+			tbufy1 = sht->ysize;
+		}
+		for (bufy = tbufy0; bufy < tbufy1; bufy++) {
+			ly = sht->ly + bufy;
+			for (bufx = tbufx0; bufx < tbufx1; bufx++) {
+				if (buf[bufy * sht->xsize + bufx] != sht->col_inv) {		//如果不是透明色
+					map[ly * ctl->xsize + lx] = sid;	//把sid与像素点对应起来
 				}
 			}
 		}
@@ -192,14 +239,16 @@ void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1)
 /**
  * 处理图层滑动
  */
-void sheet_slide(SHEETCTL *ctl, SHEET *sht, int lx, int ly)
+void sheet_slide(SHEET *sht, int lx, int ly)
 {
 	int oldlx = sht->lx, oldly = sht->ly;
 	sht->lx = lx;
 	sht->ly = ly;
 	if (sht->zindex >= 0) {
-		sheet_refreshsub(ctl, oldlx, oldly, oldlx + sht->xsize, oldly + sht->ysize);
-		sheet_refreshsub(ctl, lx, ly, lx + sht->xsize, ly + sht->ysize);
+		sheet_refreshmap(sht->ctl, oldlx, oldly, oldlx + sht->xsize, oldly + sht->ysize, 0);
+		sheet_refreshmap(sht->ctl, lx, ly, lx + sht->xsize, ly + sht->ysize, sht->zindex);
+		sheet_refreshsub(sht->ctl, oldlx, oldly, oldlx + sht->xsize, oldly + sht->ysize, 0, sht->zindex - 1);
+		sheet_refreshsub(sht->ctl, lx, ly, lx + sht->xsize, ly + sht->ysize, sht->zindex, sht->zindex);
 	}
 	return;
 }
@@ -207,10 +256,10 @@ void sheet_slide(SHEETCTL *ctl, SHEET *sht, int lx, int ly)
 /**
  * 释放图层
  */
-void sheet_free(SHEETCTL *ctl, SHEET *sht)
+void sheet_free(SHEET *sht)
 {
 	if (sht->zindex >= 0) {
-		sheet_updown(ctl, sht, -1);	//先隐藏起来
+		sheet_updown(sht, -1);	//先隐藏起来
 	}
 	sht->flags = 0;
 	return;
