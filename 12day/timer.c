@@ -19,6 +19,7 @@ void init_pit()
 	io_out8(PIT_CNT0, 0x9c);	//设置定时器中断周期的高8位
 	io_out8(PIT_CNT0, 0x2e);	//设置定时器中断周期的低8位
 	timerctl.count = 0;
+	timerctl.next = 0xffffffff;	//起初没有定时器
 	for (i = 0; i < MAX_TIMER; i++) {
 		timerctl.timers[i].flags = 0;
 	}
@@ -55,8 +56,11 @@ void timer_init(TIMER *timer, FIFO8 *fifo, uchar data)
 
 void timer_settime(TIMER *timer, uint timeout)
 {
-	timer->timeout = timeout;
+	timer->timeout = timerctl.count + timeout;
 	timer->flags = TIMER_FLAGS_USING;
+	if (timerctl.next > timer->timeout) {
+		timerctl.next = timer->timeout;	//把定时短的放到最前面
+	}
 	return;
 }
 
@@ -66,12 +70,17 @@ void inthandler20(int *esp)
 	int i;
 	io_out8(PIC0_OCW2, 0x60); /* IRQ-07受付完了をPICに通知(7-1参照) */
 	timerctl.count++;
+	if (timerctl.next > timerctl.count) {
+		return;
+	}
+	timerctl.next = 0xffffffff;
 	for (i = 0; i < MAX_TIMER; i++) {
-		if (timerctl.timers[i].flags == TIMER_FLAGS_USING) {
-			timerctl.timers[i].timeout--;
-			if (timerctl.timers[i].timeout == 0) {
-				timerctl.timers[i].flags = TIMER_FLAGS_ALLOC;
-				fifo8_put(timerctl.timers[i].fifo, timerctl.timers[i].data);
+		if (timerctl.timers[i].timeout <= timerctl.count) {	//超时
+			timerctl.timers[i].flags = TIMER_FLAGS_ALLOC;
+			fifo8_put(timerctl.timers[i].fifo, timerctl.timers[i].data);
+		} else {	//未超时
+			if (timerctl.timers[i].timeout < timerctl.next) {
+				timerctl.next = timerctl.timers[i].timeout;
 			}
 		}
 	}

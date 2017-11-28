@@ -228,7 +228,7 @@ typedef struct TIMER {
 } TIMER;
 
 typedef struct TIMERCTL {
-	uint count;
+	uint count, next;
 	TIMER timers[MAX_TIMER];
 } TIMERCTL;
 
