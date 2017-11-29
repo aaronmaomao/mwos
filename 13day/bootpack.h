@@ -235,7 +235,7 @@ typedef struct TIMER {
 	uint timeout, flags;
 	FIFO32 *fifo;
 	int data;
-	TIMER *next;
+	struct TIMER *next;
 } TIMER;
 
 /**
