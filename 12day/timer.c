@@ -10,7 +10,7 @@
 TIMERCTL timerctl;
 
 /**
- * 初始化可编程中断定时器（如8254）
+ * 初始化可编程中断定时器（如8254）,初始定时单位为10ms
  */
 void init_pit()
 {
@@ -19,7 +19,8 @@ void init_pit()
 	io_out8(PIT_CNT0, 0x9c);	//设置定时器中断周期的高8位
 	io_out8(PIT_CNT0, 0x2e);	//设置定时器中断周期的低8位
 	timerctl.count = 0;
-	timerctl.next = 0xffffffff;	//起初没有定时器
+	timerctl.mintimer = 0xffffffff;
+	timerctl.usingsum = 0;	//起初没有定时器
 	for (i = 0; i < MAX_TIMER; i++) {
 		timerctl.timers[i].flags = 0;
 	}
@@ -56,33 +57,50 @@ void timer_init(TIMER *timer, FIFO8 *fifo, uchar data)
 
 void timer_settime(TIMER *timer, uint timeout)
 {
+	int e, i, j;
 	timer->timeout = timerctl.count + timeout;
 	timer->flags = TIMER_FLAGS_USING;
-	if (timerctl.next > timer->timeout) {
-		timerctl.next = timer->timeout;	//把定时短的放到最前面
+	e = io_load_eflags();
+	io_cli();
+	for (i = 0; i < timerctl.usingsum; i++) {
+		if (timerctl.timerseq[i]->timeout >= timer->timeout) {
+			break;
+		}
 	}
+	for (j = timerctl.usingsum; j > i; j--) {
+		timerctl.timerseq[j] = timerctl.timerseq[j - 1];
+	}
+	timerctl.usingsum++;
+	timerctl.timerseq[i] = timer;
+	timerctl.mintimer = timerctl.timerseq[0]->timeout;
+	io_store_eflags(e);
 	return;
 }
 
 //定时器中断
 void inthandler20(int *esp)
 {
-	int i;
+	int i, j;
 	io_out8(PIC0_OCW2, 0x60); /* IRQ-07受付完了をPICに通知(7-1参照) */
 	timerctl.count++;
-	if (timerctl.next > timerctl.count) {
+	if (timerctl.mintimer > timerctl.count) {
 		return;
 	}
-	timerctl.next = 0xffffffff;
-	for (i = 0; i < MAX_TIMER; i++) {
-		if (timerctl.timers[i].timeout <= timerctl.count) {	//超时
-			timerctl.timers[i].flags = TIMER_FLAGS_ALLOC;
-			fifo8_put(timerctl.timers[i].fifo, timerctl.timers[i].data);
-		} else {	//未超时
-			if (timerctl.timers[i].timeout < timerctl.next) {
-				timerctl.next = timerctl.timers[i].timeout;
-			}
+	for (i = 0; i < timerctl.usingsum; i++) {
+		if (timerctl.timerseq[i]->timeout > timerctl.count) {	//未超时
+			break;
 		}
+		timerctl.timerseq[i]->flags = TIMER_FLAGS_ALLOC;	//超时
+		fifo8_put(timerctl.timerseq[i]->fifo, timerctl.timerseq[i]->data);
+	}
+	timerctl.usingsum--;
+	for (j = 0; j < timerctl.usingsum; j++) {	//将未超时的定时器逐个前移
+		timerctl.timerseq[j] = timerctl.timerseq[j + 1];
+	}
+	if (timerctl.usingsum > 0) {
+		timerctl.mintimer = timerctl.timerseq[0]->timeout;
+	} else {
+		timerctl.mintimer = 0xffffffff;
 	}
 	return;
 }

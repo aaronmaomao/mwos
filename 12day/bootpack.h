@@ -227,8 +227,14 @@ typedef struct TIMER {
 	uchar data;
 } TIMER;
 
+/**
+ * count:	记录从开机到现在总的定时时间
+ * mintime:	记录定时器组中最短的定时时间
+ * usingsum:用来记录有几个定时器处于活动状态
+ */
 typedef struct TIMERCTL {
-	uint count, next;
+	uint count, mintimer, usingsum;
+	TIMER *timerseq[MAX_TIMER];	//定时器序列
 	TIMER timers[MAX_TIMER];
 } TIMERCTL;
 
