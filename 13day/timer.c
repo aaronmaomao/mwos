@@ -15,15 +15,23 @@ TIMERCTL timerctl;
 void init_pit()
 {
 	int i;
+	TIMER *timer;
 	io_out8(PIT_CTRL, 0x34);
 	io_out8(PIT_CNT0, 0x9c);	//设置定时器中断周期的高8位
 	io_out8(PIT_CNT0, 0x2e);	//设置定时器中断周期的低8位
 	timerctl.count = 0;
 	timerctl.mintimes = 0xffffffff;
-	timerctl.usingsum = 0;	//起初没有定时器
+	//timerctl.usingsum = 0;	//起初没有定时器
 	for (i = 0; i < MAX_TIMER; i++) {
 		timerctl.timers[i].flags = 0;
 	}
+	timer = timer_alloc();	//哨兵定时器
+	timer->next = 0;
+	timer->timeout = 0xffffffff;
+	timer->flags = TIMER_FLAGS_USING;
+	timerctl.mintimer = timer;
+	timerctl.mintimes = 0xffffffff;
+	//timerctl.usingsum = 1;
 	return;
 }
 
@@ -58,47 +66,31 @@ void timer_init(TIMER *timer, FIFO32 *fifo, int data)
 void timer_settime(TIMER *timer, uint timeout)
 {
 	int e;
-	TIMER *t, *s;
+	TIMER *t1, *t2;
 	timer->timeout = timerctl.count + timeout;
 	timer->flags = TIMER_FLAGS_USING;
 	e = io_load_eflags();
 	io_cli();
-	timerctl.usingsum++;
-	if (timerctl.usingsum == 1) {
+	//timerctl.usingsum++;
+	t1 = timerctl.mintimer;
+	if (timer->timeout <= t1->timeout) {
 		timerctl.mintimer = timer;
-		timer->next = 0;
-		timerctl.mintimes = timer->timeout;
-		io_store_eflags(e);
-		return;
-	}
-	t = timerctl.mintimer;
-	if (timer->timeout <= t->timeout) {
-		timerctl.mintimer = timer;
-		timer->next = t;
+		timer->next = t1;
 		timerctl.mintimes = timer->timeout;
 		io_store_eflags(e);
 		return;
 	}
 
 	for (;;) {
-		s = t;
-		t = t->next;
-		if (t == 0) {
-			break;
-		}
-
-		if (timer->timeout <= t->timeout) {
-			s->next = timer;
-			timer->next = t;
+		t2 = t1;
+		t2 = t2->next;
+		if (timer->timeout <= t2->timeout) {	//因为有哨兵timer，所以肯定会满足
+			t1->next = timer;
+			timer->next = t2;
 			io_store_eflags(e);
 			return;
 		}
 	}
-
-	s->next = timer;
-	timer->next = 0;
-	io_store_eflags(e);
-	return;
 }
 
 //定时器中断
@@ -112,7 +104,7 @@ void inthandler20(int *esp)
 		return;
 	}
 	timer = timerctl.mintimer;
-	for (i = 0; i < timerctl.usingsum; i++) {	//注：会出现多个定时器同时超时的情况
+	for (;;) {	//注：会出现多个定时器同时超时的情况
 		if (timer->timeout > timerctl.count) {	//未超时
 			break;
 		}
@@ -120,12 +112,8 @@ void inthandler20(int *esp)
 		fifo32_put(timer->fifo, timer->data);
 		timer = timer->next;
 	}
-	timerctl.usingsum -= i;	//共i个定时器超时了（一次中断发现多个定时器超时，貌似不是精确定时 ヽ(ﾟДﾟ)ﾉ ）
+	//timerctl.usingsum -= i;	//共i个定时器超时了（一次中断发现多个定时器超时，貌似不是精确定时 ヽ(ﾟДﾟ)ﾉ ）
 	timerctl.mintimer = timer;
-	if (timerctl.usingsum > 0) {
-		timerctl.mintimes = timerctl.mintimer->timeout;
-	} else {
-		timerctl.mintimes = 0xffffffff;
-	}
+	timerctl.mintimes = timerctl.mintimer->timeout;
 	return;
 }

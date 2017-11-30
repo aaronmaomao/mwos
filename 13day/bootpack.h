@@ -244,7 +244,7 @@ typedef struct TIMER {
  * usingsum:用来记录有几个定时器处于活动状态
  */
 typedef struct TIMERCTL {
-	uint count, mintimes, usingsum;
+	uint count, mintimes;//usingsum;
 	//TIMER *timerseq[MAX_TIMER];	//定时器序列
 	TIMER *mintimer;	//下一个即将超时的定时器（即当前最短的定时器）
 	TIMER timers[MAX_TIMER];
