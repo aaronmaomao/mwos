@@ -1,10 +1,11 @@
 #include "bootpack.h"
 #include "stdio.h"
 
-extern void putfonts8_asc_sht(SHEET *sht, int lx, int ly, int color, int bcolor, char *str, int length);	//显示字符串
 static char keytable[0x54] = { 0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '^', 0, 0, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '@',
 		'[', 0, 0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', ':', 0, 0, ']', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 0, '*', 0, ' ', 0, 0, 0,
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.' };
+
+extern void putfonts8_asc_sht(SHEET *sht, int lx, int ly, int color, int bcolor, char *str, int length);
 
 void HariMain(void)
 {
@@ -12,7 +13,7 @@ void HariMain(void)
 	char temp[40];
 	int fifobuf[128];
 	FIFO32 fifo;
-	int mx, my, dat, count = 0, t1 = 0;
+	int mx, my, dat, count = 0, course_x = 8, course_c = COL8_FFFFFF;
 	MOUSE_DESCODE mdecode;
 	uint memtotal;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
@@ -59,6 +60,7 @@ void HariMain(void)
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
 	init_mouse_cursor8(buf_mouse, 99);
 	make_window8(buf_win, 160, 52, "window");
+	make_textbox8(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
 
 	sheet_slide(sht_back, 0, 0);
 	mx = (binfo->scrnx - 16) / 2; /* 画面中央になるように座標計算 */
@@ -88,10 +90,19 @@ void HariMain(void)
 				sprintf(temp, "%02X", dat - 256);
 				putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, temp, 2);
 				if (dat < 256 + 0x54) {
-					temp[0] = keytable[dat - 256];
-					temp[1] = 0;
-					putfonts8_asc_sht(sht_win, t1 += 8, 28, COL8_000000, COL8_C6C6C6, temp, 1);
+					if (keytable[dat - 256] != 0 && course_x < 144) {
+						temp[0] = keytable[dat - 256];
+						temp[1] = 0;
+						putfonts8_asc_sht(sht_win, course_x, 28, COL8_000000, COL8_FFFFFF, temp, 1);
+						course_x += 8;
+					}
 				}
+				if (dat == 256 + 0x0e && course_x > 8) {	//退格键
+					putfonts8_asc_sht(sht_win, course_x, 28, COL8_000000, COL8_FFFFFF, " ", 1);
+					course_x -= 8;
+				}
+				boxfill8(sht_win->buf, sht_win->xsize, course_c, course_x, 28, course_x + 7, 28 + 15);
+				sheet_refresh(sht_win, course_x, 28, course_x + 8, 28 + 16);
 			} else if (512 <= dat && dat <= 767) {	//鼠标数据
 				if (mouse_decode(&mdecode, dat - 512) != 0) {
 					sprintf(temp, "[lcr %4d %4d]", mdecode.x, mdecode.y);
@@ -130,18 +141,16 @@ void HariMain(void)
 				count = 0;
 			} else if (dat == 1) {
 				timer_init(timer3, &fifo, 0);
-				boxfill8(sht_back->buf, sht_back->xsize, COL8_FFFFFF, 8, 96, 15, 111);
-				boxfill8(sht_win->buf, sht_win->xsize, COL8_C6C6C6, t1 + 2, 28, t1 + 10, 28 + 16);
+				course_c = COL8_000000;
 				timer_settime(timer3, 50);
-				sheet_refresh(sht_back, 8, 96, 16, 112);
-				sheet_refresh(sht_win, t1 + 2, 28, t1 + 10, 28 + 16);
+				boxfill8(sht_win->buf, sht_win->xsize, course_c, course_x, 28, course_x + 7, 28 + 15);
+				sheet_refresh(sht_win, course_x, 28, course_x + 8, 28 + 16);
 			} else if (dat == 0) {
 				timer_init(timer3, &fifo, 1);
-				boxfill8(sht_back->buf, sht_back->xsize, COL8_008484, 8, 96, 15, 111);
-				boxfill8(sht_win->buf, sht_win->xsize, COL8_000000, t1 + 2, 28, t1 + 10, 28 + 16);
+				course_c = COL8_FFFFFF;
 				timer_settime(timer3, 50);
-				sheet_refresh(sht_back, 8, 96, 16, 112);
-				sheet_refresh(sht_win, t1 + 2, 28, t1 + 10, 28 + 16);
+				boxfill8(sht_win->buf, sht_win->xsize, course_c, course_x, 28, course_x + 7, 28 + 15);
+				sheet_refresh(sht_win, course_x, 28, course_x + 8, 28 + 16);
 			}
 		}
 	}

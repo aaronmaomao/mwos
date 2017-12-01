@@ -222,6 +222,7 @@ void sheet_free(SHEET *sht);
 
 /** window.c */
 void make_window8(uchar *buf, int xsize, int ysize, char *title);
+void make_textbox8(SHEET *sht, int lx, int ly, int length, int height, int color);
 
 /** timer.c */
 #define PIT_CTRL	0x0043	//定时器(8254)的port
