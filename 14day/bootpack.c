@@ -133,6 +133,9 @@ void HariMain(void)
 					sprintf(temp, "(%3d, %3d)", mx, my);
 					putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, temp, 10);
 					sheet_slide(sht_mouse, mx, my);
+					if ((mdecode.btn & 0x01) != 0) {	//左键按下
+						sheet_slide(sht_win, mx - 80, my - 8);
+					}
 				}
 			} else if (dat == 10) {
 				putfonts8_asc_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
