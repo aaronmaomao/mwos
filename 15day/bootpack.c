@@ -6,7 +6,7 @@ static char keytable[0x54] = { 0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9'
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.' };
 
 extern void putfonts8_asc_sht(SHEET *sht, int lx, int ly, int color, int bcolor, char *str, int length);
-void task_b_main(void);
+void task_b_main(SHEET *sht_back);
 
 /*
  *  task status segment
@@ -22,23 +22,18 @@ typedef struct TSS32 {
 void HariMain(void)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
-	char temp[40];
 	int fifobuf[128];
 	FIFO32 fifo;
-	int mx, my, dat, count = 0, course_x = 8, course_c = COL8_FFFFFF, task_b_esp;
+	int mx, my, dat, course_x = 8, course_c = COL8_FFFFFF, task_b_esp;
+	char temp[40];
 	MOUSE_DESCODE mdecode;
 	uint memtotal;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 	SHEETCTL *shtctl;
 	SHEET *sht_back, *sht_mouse, *sht_win;
 	uchar *buf_back, buf_mouse[16 * 16], *buf_win;
-	TIMER *timer, *timer2, *timer3;
-
+	TIMER *timer, *timer2, *timer3, *timer_ts;
 	TSS32 tss_a, tss_b;
-	tss_a.ldtr = 0;
-	tss_a.iomap = 0x40000000;
-	tss_b.ldtr = 0;
-	tss_b.iomap = 0x40000000;
 
 	init_gdtidt();
 	init_pic();
@@ -59,6 +54,9 @@ void HariMain(void)
 	timer3 = timer_alloc();
 	timer_init(timer3, &fifo, 1);
 	timer_settime(timer3, 50);
+	timer_ts = timer_alloc();
+	timer_init(timer_ts, &fifo, 2);
+	timer_settime(timer_ts, 2);
 
 	memtotal = memtest(0x00400000, 0xffffffff);	//获取最大内存地址
 	memman_init(memman);
@@ -90,18 +88,18 @@ void HariMain(void)
 	sprintf(temp, "(%3d, %3d)", mx, my);
 	putfonts8_asc(buf_back, sht_back->xsize, 0, 0, COL8_FFFFFF, temp);
 	sprintf(temp, "memory = %dMB ,   free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
-	putfonts8_asc(buf_back, sht_back->xsize, 0, 32, COL8_FFFFFF, temp);
-	sheet_refresh(sht_back, 0, 0, sht_back->xsize, 48);
+	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, temp, 40);
 
+	tss_a.ldtr = 0;
+	tss_a.iomap = 0x40000000;
+	tss_b.ldtr = 0;
+	tss_b.iomap = 0x40000000;
 	SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
 	set_segmdesc(gdt + 3, 103, (int) &tss_a, AR_TSS32);
 	set_segmdesc(gdt + 4, 103, (int) &tss_b, AR_TSS32);
-	tss_a.ldtr = 0;
-	tss_a.iomap =0x40000000;
-	tss_b.ldtr = 0;
-	tss_b.iomap = 0x40000000;
+
 	load_tr(3 * 8);	//把任务a的gdt号放到tr中，在下次切换任务时就会自动把当前任务（即主程序）的状态存在tss_a中，类似于tts_a与主程序绑定
-	task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024;	//给任务b申请64k的堆栈段内存
+	task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;	//给任务b申请64k的堆栈段内存
 	tss_b.eip = (int) &task_b_main;		//在任务切换的时候会读tss的配置
 	tss_b.eflags = 0x00000202;	//IF = 1
 	tss_b.eax = 0;
@@ -119,14 +117,19 @@ void HariMain(void)
 	tss_b.fs = 1 * 8;
 	tss_b.gs = 1 * 8;
 
+	*((int *) (task_b_esp + 4)) = (int) sht_back;	//因为：函数的第一个参数在esp+4处，即task_b_esp+4 ~ task_b_esp+7
 	for (;;) {
 		io_cli();
 		if (fifo32_status(&fifo) == 0) {
-			io_sti();
+			io_stihlt();
 		} else {
 			dat = fifo32_get(&fifo);
 			io_sti();
-			if (256 <= dat && dat <= 511) {		//键盘数据
+			if (dat == 2) {
+				//taskswitch4();
+				farjmp(0, 4 * 8);
+				timer_settime(timer_ts, 2);
+			} else if (256 <= dat && dat <= 511) {		//键盘数据
 				sprintf(temp, "%02X", dat - 256);
 				putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, temp, 2);
 				if (dat < 256 + 0x54) {
@@ -179,10 +182,8 @@ void HariMain(void)
 				}
 			} else if (dat == 10) {
 				putfonts8_asc_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
-				taskswitch4();
 			} else if (dat == 3) {
 				putfonts8_asc_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
-				count = 0;
 			} else if (dat == 1) {
 				timer_init(timer3, &fifo, 0);
 				course_c = COL8_000000;
@@ -200,25 +201,36 @@ void HariMain(void)
 	}
 }
 
-void task_b_main(void)
+void task_b_main(SHEET *sht_back)
 {
 	FIFO32 fifo;
-	TIMER *timer;
-	int i, fifobuf[128];
+	TIMER *timer_ts, *timer_put;
+	int dat, fifobuf[128], count = 0;
+	char temp[30];
+	//SHEET *sht_back = (SHEET*) *((int *) 0x0fec);
 
 	fifo32_init(&fifo, 128, fifobuf);
-	timer = timer_alloc();
-	timer_init(timer, &fifo, 1);
-	timer_settime(timer, 500);
+	timer_ts = timer_alloc();
+	timer_init(timer_ts, &fifo, 2);
+	timer_settime(timer_ts, 2);
+	timer_put = timer_alloc();
+	timer_init(timer_put, &fifo, 1);
+	timer_settime(timer_put, 1);
 	for (;;) {
+		count++;
 		io_cli();
 		if (fifo32_status(&fifo) == 0) {
-			io_stihlt();
-		} else {
-			i = fifo32_get(&fifo);
 			io_sti();
-			if (i == 1) {	//超时5秒
-				taskswitch3();
+		} else {
+			dat = fifo32_get(&fifo);
+			io_sti();
+			if (dat == 2) {	//超时5秒
+				farjmp(0, 3 * 8);
+				timer_settime(timer_ts, 2);
+			} else if (dat == 1) {
+				sprintf(temp, "%10d", count);
+				putfonts8_asc_sht(sht_back, 0, 144, COL8_FFFFFF, COL8_008484, temp, 10);
+				timer_settime(timer_put, 1);
 			}
 		}
 	}

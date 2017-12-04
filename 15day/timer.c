@@ -83,10 +83,10 @@ void timer_settime(TIMER *timer, uint timeout)
 
 	for (;;) {
 		t2 = t1;
-		t2 = t2->next;
-		if (timer->timeout <= t2->timeout) {	//因为有哨兵timer，所以肯定会满足
-			t1->next = timer;
-			timer->next = t2;
+		t1 = t1->next;
+		if (timer->timeout <= t1->timeout) {	//因为有哨兵timer，所以肯定会满足
+			t2->next = timer;
+			timer->next = t1;
 			io_store_eflags(e);
 			return;
 		}
