@@ -14,7 +14,8 @@ bootobjs = $(objp)bootpack.obj \
 		   $(objp)memory.obj \
 		   $(objp)sheet.obj \
 		   $(objp)window.obj \
-		   $(objp)timer.obj
+		   $(objp)timer.obj \
+		   $(objp)mtask.obj
 
 make = $(toolpath)make.exe -r
 #制作img镜像

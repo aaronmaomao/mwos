@@ -267,4 +267,21 @@ void timer_init(TIMER *timer, FIFO32 *fifo, int data);
 void timer_settime(TIMER *timer, uint timeout);
 void inthandler20(int *esp);
 
+/** mtask.c */
+/*
+ *  task status segment
+ * 	note：TSS也是内存段的一种，在切换任务时会保存当前任务的状态，读取要切换的任务的状态
+ */
+typedef struct TSS32 {
+	int backline, esp0, ss0, esp1, ss1, esp2, ss2, cr3;	//与任务设置相关的信息
+	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;	//记录该任务的32位寄存器值
+	int es, cs, ss, ds, fs, gs;	//记录该任务的段寄存器值
+	int ldtr, iomap;
+} TSS32;
+
+extern TIMER *mt_timer;
+
+void mt_init(void);
+void mt_taskswitch(void);
+
 #endif

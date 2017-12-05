@@ -8,17 +8,6 @@ static char keytable[0x54] = { 0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9'
 extern void putfonts8_asc_sht(SHEET *sht, int lx, int ly, int color, int bcolor, char *str, int length);
 void task_b_main(SHEET *sht_back);
 
-/*
- *  task status segment
- * 	note：TSS也是内存段的一种，在切换任务时会保存当前任务的状态，读取要切换的任务的状态
- */
-typedef struct TSS32 {
-	int backline, esp0, ss0, esp1, ss1, esp2, ss2, cr3;	//与任务设置相关的信息
-	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;	//记录该任务的32位寄存器值
-	int es, cs, ss, ds, fs, gs;	//记录该任务的段寄存器值
-	int ldtr, iomap;
-} TSS32;
-
 void HariMain(void)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
@@ -32,7 +21,7 @@ void HariMain(void)
 	SHEETCTL *shtctl;
 	SHEET *sht_back, *sht_mouse, *sht_win;
 	uchar *buf_back, buf_mouse[16 * 16], *buf_win;
-	TIMER *timer, *timer2, *timer3, *timer_ts;
+	TIMER *timer, *timer2, *timer3;
 	TSS32 tss_a, tss_b;
 
 	init_gdtidt();
@@ -54,9 +43,6 @@ void HariMain(void)
 	timer3 = timer_alloc();
 	timer_init(timer3, &fifo, 1);
 	timer_settime(timer3, 50);
-	timer_ts = timer_alloc();
-	timer_init(timer_ts, &fifo, 2);
-	timer_settime(timer_ts, 2);
 
 	memtotal = memtest(0x00400000, 0xffffffff);	//获取最大内存地址
 	memman_init(memman);
@@ -116,7 +102,7 @@ void HariMain(void)
 	tss_b.ds = 1 * 8;
 	tss_b.fs = 1 * 8;
 	tss_b.gs = 1 * 8;
-
+	mt_init();
 	*((int *) (task_b_esp + 4)) = (int) sht_back;	//因为：函数的第一个参数在esp+4处，即task_b_esp+4 ~ task_b_esp+7
 	for (;;) {
 		io_cli();
@@ -125,11 +111,7 @@ void HariMain(void)
 		} else {
 			dat = fifo32_get(&fifo);
 			io_sti();
-			if (dat == 2) {
-				//taskswitch4();
-				farjmp(0, 4 * 8);
-				timer_settime(timer_ts, 2);
-			} else if (256 <= dat && dat <= 511) {		//键盘数据
+			if (256 <= dat && dat <= 511) {		//键盘数据
 				sprintf(temp, "%02X", dat - 256);
 				putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, temp, 2);
 				if (dat < 256 + 0x54) {
@@ -204,18 +186,15 @@ void HariMain(void)
 void task_b_main(SHEET *sht_back)
 {
 	FIFO32 fifo;
-	TIMER *timer_ts, *timer_put;
+	TIMER *timer_put;
 	int dat, fifobuf[128], count = 0;
 	char temp[30];
 	//SHEET *sht_back = (SHEET*) *((int *) 0x0fec);
 
 	fifo32_init(&fifo, 128, fifobuf);
-	timer_ts = timer_alloc();
-	timer_init(timer_ts, &fifo, 2);
-	timer_settime(timer_ts, 2);
 	timer_put = timer_alloc();
 	timer_init(timer_put, &fifo, 1);
-	timer_settime(timer_put, 1);
+	timer_settime(timer_put, 100);
 	for (;;) {
 		count++;
 		io_cli();
@@ -224,13 +203,10 @@ void task_b_main(SHEET *sht_back)
 		} else {
 			dat = fifo32_get(&fifo);
 			io_sti();
-			if (dat == 2) {	//超时5秒
-				farjmp(0, 3 * 8);
-				timer_settime(timer_ts, 2);
-			} else if (dat == 1) {
-				sprintf(temp, "%10d", count);
+			if (dat == 1) {
+				sprintf(temp, "%11d", count);
 				putfonts8_asc_sht(sht_back, 0, 144, COL8_FFFFFF, COL8_008484, temp, 10);
-				timer_settime(timer_put, 1);
+				timer_settime(timer_put, 100);
 			}
 		}
 	}

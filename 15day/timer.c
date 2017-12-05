@@ -96,7 +96,7 @@ void timer_settime(TIMER *timer, uint timeout)
 //定时器中断
 void inthandler20(int *esp)
 {
-	int i;
+	char ts = 0;
 	TIMER *timer;
 	io_out8(PIC0_OCW2, 0x60); /* IRQ-07受付完了をPICに通知(7-1参照) */
 	timerctl.count++;
@@ -109,11 +109,18 @@ void inthandler20(int *esp)
 			break;
 		}
 		timer->flags = TIMER_FLAGS_ALLOC;	//超时
-		fifo32_put(timer->fifo, timer->data);
+		if (timer != mt_timer) {
+			fifo32_put(timer->fifo, timer->data);
+		} else {
+			ts = 1;
+		}
 		timer = timer->next;
 	}
 	//timerctl.usingsum -= i;	//共i个定时器超时了（一次中断发现多个定时器超时，貌似不是精确定时 ヽ(ﾟДﾟ)ﾉ ）
 	timerctl.mintimer = timer;
 	timerctl.mintimes = timerctl.mintimer->timeout;
+	if (ts != 0) {
+		mt_taskswitch();
+	}
 	return;
 }
