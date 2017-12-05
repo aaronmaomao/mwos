@@ -44,9 +44,10 @@ void farjmp(int eip, int cs);
 typedef struct FIFO32 {
 	int *buf;
 	int p, q, size, free, flags;
+	struct TASK *task;
 } FIFO32;
 
-void fifo32_init(FIFO32 *fifo, int size, int *buf);
+void fifo32_init(FIFO32 *fifo, int size, int *buf, struct TASK *task);
 int fifo32_put(FIFO32 *fifo, int data);
 int fifo32_get(FIFO32 *fifo);
 int fifo32_status(FIFO32 *fifo);
@@ -299,5 +300,6 @@ TASK *task_init(MEMMAN *mem);
 TASK *task_alloc(void);
 void task_run(TASK *task);
 void task_switch(void);
+void task_sleep(TASK *task);
 
 #endif

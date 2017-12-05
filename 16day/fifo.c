@@ -2,7 +2,7 @@
 
 #define FLAGS_OVERRUN		0x0001
 
-void fifo32_init(FIFO32 *fifo, int size, int *buf)
+void fifo32_init(FIFO32 *fifo, int size, int *buf, TASK *task)
 {
 	fifo->size = size;
 	fifo->buf = buf;
@@ -10,6 +10,7 @@ void fifo32_init(FIFO32 *fifo, int size, int *buf)
 	fifo->flags = 0;
 	fifo->p = 0;
 	fifo->q = 0;
+	fifo->task = task; //有数据写入时要唤醒的任务
 	return;
 }
 
@@ -26,6 +27,11 @@ int fifo32_put(FIFO32 *fifo, int data)
 		fifo->p = 0;	//调整保存索引
 	}
 	fifo->free--;
+	if (fifo->task != 0) {
+		if (fifo->task->flags != 2) {	//非运行状态
+			task_run(fifo->task);	//唤醒
+		}
+	}
 	return 0;
 }
 

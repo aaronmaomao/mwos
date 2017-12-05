@@ -22,12 +22,12 @@ void HariMain(void)
 	SHEET *sht_back, *sht_mouse, *sht_win;
 	uchar *buf_back, buf_mouse[16 * 16], *buf_win;
 	TIMER *timer, *timer2, *timer3;
-	TASK *task_b;
+	TASK *task_a, *task_b;
 
 	init_gdtidt();
 	init_pic();
 	io_sti(); /* IDT/PICの初期化が終わったのでCPUの割り込み禁止を解除 */
-	fifo32_init(&fifo, 128, fifobuf);
+	fifo32_init(&fifo, 128, fifobuf, 0);
 	init_pit();
 	init_keyboard(&fifo, 256);
 	enable_mouse(&fifo, 512, &mdecode);
@@ -76,8 +76,9 @@ void HariMain(void)
 	sprintf(temp, "memory = %dMB ,   free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, temp, 40);
 
+	task_a = task_init(memman);
 	task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
-	task_init(memman);
+	fifo.task = task_a;
 	task_b = task_alloc();
 	task_b->tss.esp = task_b_esp;	//给任务b申请64k的堆栈段内存
 	task_b->tss.eip = (int) &task_b_main;
@@ -93,7 +94,9 @@ void HariMain(void)
 	for (;;) {
 		io_cli();
 		if (fifo32_status(&fifo) == 0) {
-			io_stihlt();
+			//io_stihlt();
+			task_sleep(task_a);
+			io_sti();
 		} else {
 			dat = fifo32_get(&fifo);
 			io_sti();
@@ -175,12 +178,11 @@ void task_b_main(SHEET *sht_back)
 	TIMER *timer_put;
 	int dat, fifobuf[128], count = 0;
 	char temp[30];
-	//SHEET *sht_back = (SHEET*) *((int *) 0x0fec);
 
-	fifo32_init(&fifo, 128, fifobuf);
+	fifo32_init(&fifo, 128, fifobuf, 0);
 	timer_put = timer_alloc();
 	timer_init(timer_put, &fifo, 1);
-	timer_settime(timer_put, 100);
+	timer_settime(timer_put, 10);
 	for (;;) {
 		count++;
 		io_cli();
@@ -192,7 +194,7 @@ void task_b_main(SHEET *sht_back)
 			if (dat == 1) {
 				sprintf(temp, "%11d", count);
 				putfonts8_asc_sht(sht_back, 0, 144, COL8_FFFFFF, COL8_008484, temp, 10);
-				timer_settime(timer_put, 100);
+				timer_settime(timer_put, 10);
 			}
 		}
 	}

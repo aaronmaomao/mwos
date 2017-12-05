@@ -22,7 +22,7 @@ TASK *task_init(MEMMAN *mem)
 	for (i = 0; i < MAX_TASKS; i++) {
 		taskctl->task[i].flags = 0;
 		taskctl->task[i].sel = (TASK_BGDT + i) * 8;
-		set_segmdesc(gdt + TASK_BGDT + i, 103, (int)&taskctl->task[i].tss, AR_TSS32);
+		set_segmdesc(gdt + TASK_BGDT + i, 103, (int) &taskctl->task[i].tss, AR_TSS32);
 	}
 	task = task_alloc();
 	task->flags = 2;
@@ -80,6 +80,39 @@ void task_switch(void)
 			taskctl->now = 0;
 		}
 		farjmp(0, taskctl->taskseq[taskctl->now]->sel);
+	}
+	return;
+}
+
+void task_sleep(TASK *task)
+{
+	int i;
+	char ts = 0;
+	if (task->flags == 2) {
+		if (task == taskctl->taskseq[taskctl->now]) {
+			ts = 1;	//task就是当前运行的任务，即自己睡眠自己
+		}
+
+		for (i = 0; i < taskctl->runnum; i++) {	//当前任务睡眠其他的任务
+			if (taskctl->taskseq[i] == task) {
+				break;
+			}
+		}
+		taskctl->runnum--;
+		if (i < taskctl->now) {
+			taskctl->now--;
+		}
+		for (; i < taskctl->runnum; i++) {
+			taskctl->taskseq[i] = taskctl->taskseq[i + 1];	//把要睡眠的任务从运行列队中踢掉
+		}
+		task->flags = 1;	//把当前task设为不工作（睡眠）状态
+
+		if (ts != 0) {	//自己睡眠自己
+			if (taskctl->now >= taskctl->runnum) {	//即位于任务列队的最后一位
+				taskctl->now = 0; //所以下一个任务为最前面的
+			}
+			farjmp(0, taskctl->taskseq[taskctl->now]->sel);
+		}
 	}
 	return;
 }
