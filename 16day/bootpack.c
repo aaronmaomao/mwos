@@ -97,7 +97,6 @@ void HariMain(void)
 	putfonts8_asc(buf_back, sht_back->xsize, 0, 0, COL8_FFFFFF, temp);
 	sprintf(temp, "memory = %dMB ,   free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, temp, 40);
-
 	for (;;) {
 		io_cli();
 		if (fifo32_status(&fifo) == 0) {

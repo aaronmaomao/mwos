@@ -271,6 +271,8 @@ void inthandler20(int *esp);
 /** mtask.c */
 #define MAX_TASKS	1000
 #define TASK_BGDT	3	//从GDT的几号开始分配给TSS
+#define MAX_TASKS_LV	100	//每一级最多有100个任务
+#define MAX_TASKLEVELS	10	//最多有10级
 /*
  *  task status segment
  * 	note：TSS也是内存段的一种，在切换任务时会保存当前任务的状态，读取要切换的任务的状态
@@ -284,14 +286,20 @@ typedef struct TSS32 {
 
 typedef struct TASK {
 	int sel, flags;	//sel：GDT号
-	int priority;
+	int level, priority;
 	TSS32 tss;
 } TASK;
 
-typedef struct TASKCTL {
-	int runnum;	//记录运行态的任务数量
+typedef struct TASKLEVEL {
+	int runnum;	//当前级别下的任务数
 	int now;	//记录当前正在运行的任务是哪个
-	TASK *taskseq[MAX_TASKS];
+	TASK *tasks[MAX_TASKS_LV];
+} TASKLEVEL;
+
+typedef struct TASKCTL {
+	int now_lv;
+	char lv_change;
+	TASKLEVEL level[MAX_TASKLEVELS];
 	TASK task[MAX_TASKS];
 } TASKCTL;
 
@@ -302,5 +310,6 @@ TASK *task_alloc(void);
 void task_run(TASK *task, int priority);
 void task_switch(void);
 void task_sleep(TASK *task);
+TASK *task_now(void);	//返回活动
 
 #endif

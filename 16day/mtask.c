@@ -32,7 +32,7 @@ TASK *task_init(MEMMAN *mem)
 	taskctl->taskseq[0] = task;
 	load_tr(task->sel);
 	task_timer = timer_alloc();
-	timer_settime(task_timer, 2);
+	timer_settime(task_timer, task->priority);
 	return task;
 }
 
