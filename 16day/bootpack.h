@@ -229,7 +229,7 @@ void sheet_slide(SHEET *sht, int lx, int ly);
 void sheet_free(SHEET *sht);
 
 /** window.c */
-void make_window8(uchar *buf, int xsize, int ysize, char *title);
+void make_window8(uchar *buf, int xsize, int ysize, char *title, char act);
 void make_textbox8(SHEET *sht, int lx, int ly, int length, int height, int color);
 
 /** timer.c */
@@ -284,6 +284,7 @@ typedef struct TSS32 {
 
 typedef struct TASK {
 	int sel, flags;	//sel：GDT号
+	int priority;
 	TSS32 tss;
 } TASK;
 
@@ -298,7 +299,7 @@ extern TIMER *task_timer;
 
 TASK *task_init(MEMMAN *mem);
 TASK *task_alloc(void);
-void task_run(TASK *task);
+void task_run(TASK *task, int priority);
 void task_switch(void);
 void task_sleep(TASK *task);
 

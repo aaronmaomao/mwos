@@ -13,16 +13,16 @@ void HariMain(void)
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
 	int fifobuf[128];
 	FIFO32 fifo;
-	int mx, my, dat, course_x = 8, course_c = COL8_FFFFFF, task_b_esp;
+	int mx, my, dat, course_x = 8, course_c = COL8_FFFFFF;
 	char temp[40];
 	MOUSE_DESCODE mdecode;
 	uint memtotal;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 	SHEETCTL *shtctl;
-	SHEET *sht_back, *sht_mouse, *sht_win;
-	uchar *buf_back, buf_mouse[16 * 16], *buf_win;
-	TIMER *timer, *timer2, *timer3;
-	TASK *task_a, *task_b;
+	SHEET *sht_back, *sht_mouse, *sht_win, *sht_win_b[3];
+	uchar *buf_back, buf_mouse[16 * 16], *buf_win, *buf_win_b;
+	TIMER *timer;
+	TASK *task_a, *task_b[3];
 
 	init_gdtidt();
 	init_pic();
@@ -35,14 +35,8 @@ void HariMain(void)
 	io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111) */
 
 	timer = timer_alloc();
-	timer_init(timer, &fifo, 10);
-	timer_settime(timer, 1000);
-	timer2 = timer_alloc();
-	timer_init(timer2, &fifo, 3);
-	timer_settime(timer2, 300);
-	timer3 = timer_alloc();
-	timer_init(timer3, &fifo, 1);
-	timer_settime(timer3, 50);
+	timer_init(timer, &fifo, 1);
+	timer_settime(timer, 50);
 
 	memtotal = memtest(0x00400000, 0xffffffff);	//获取最大内存地址
 	memman_init(memman);
@@ -50,47 +44,60 @@ void HariMain(void)
 
 	init_palette();
 	shtctl = sheetctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
+	task_a = task_init(memman);
+	fifo.task = task_a;
 	sht_back = sheet_alloc(shtctl);
 	sht_mouse = sheet_alloc(shtctl);
 	sht_win = sheet_alloc(shtctl);
 	buf_back = (uchar *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
-	buf_win = (uchar *) memman_alloc_4k(memman, 160 * 52);
+	buf_win = (uchar *) memman_alloc_4k(memman, 144 * 52);
 	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);
 	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);
-	sheet_setbuf(sht_win, buf_win, 160, 52, -1);
-
+	sheet_setbuf(sht_win, buf_win, 144, 52, -1);
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
 	init_mouse_cursor8(buf_mouse, 99);
-	make_window8(buf_win, 160, 52, "window");
-	make_textbox8(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
-	sheet_slide(sht_back, 0, 0);
+
+	for (dat = 0; dat < 3; dat++) {
+		sht_win_b[dat] = sheet_alloc(shtctl);
+		buf_win_b = (uchar *) memman_alloc_4k(memman, 144 * 52);
+		sheet_setbuf(sht_win_b[dat], buf_win_b, 144, 52, -1);
+		sprintf(temp, "task_b%d", dat);
+		make_window8(buf_win_b, 144, 52, temp, 0);
+		task_b[dat] = task_alloc();
+		task_b[dat]->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
+		task_b[dat]->tss.eip = (int) &task_b_main;
+		task_b[dat]->tss.es = 1 * 8;
+		task_b[dat]->tss.cs = 2 * 8;
+		task_b[dat]->tss.ss = 1 * 8;
+		task_b[dat]->tss.ds = 1 * 8;
+		task_b[dat]->tss.fs = 1 * 8;
+		task_b[dat]->tss.gs = 1 * 8;
+		*((int *) (task_b[dat]->tss.esp + 4)) = (int) sht_win_b[dat];
+		task_run(task_b[dat], dat + 1);
+	}
+
+	make_window8(buf_win, 144, 52, "window", 1);
+	make_textbox8(sht_win, 8, 28, 128, 16, COL8_FFFFFF);
 	mx = (binfo->scrnx - 16) / 2; /* 画面中央になるように座標計算 */
 	my = (binfo->scrny - 28 - 16) / 2;
+	sheet_slide(sht_back, 0, 0);
+	sheet_slide(sht_win_b[0], 168, 56);
+	sheet_slide(sht_win_b[1], 8, 116);
+	sheet_slide(sht_win_b[2], 168, 116);
+	sheet_slide(sht_win, 8, 56);
 	sheet_slide(sht_mouse, mx, my);
-	sheet_slide(sht_win, 80, 72);
 	sheet_updown(sht_back, 0);
-	sheet_updown(sht_win, 1);
-	sheet_updown(sht_mouse, 2);
+	sheet_updown(sht_win_b[0], 1);
+	sheet_updown(sht_win_b[1], 2);
+	sheet_updown(sht_win_b[2], 3);
+	sheet_updown(sht_win, 4);
+	sheet_updown(sht_mouse, 5);
+
 	sprintf(temp, "(%3d, %3d)", mx, my);
 	putfonts8_asc(buf_back, sht_back->xsize, 0, 0, COL8_FFFFFF, temp);
 	sprintf(temp, "memory = %dMB ,   free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, temp, 40);
 
-	task_a = task_init(memman);
-	task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
-	fifo.task = task_a;
-	task_b = task_alloc();
-	task_b->tss.esp = task_b_esp;	//给任务b申请64k的堆栈段内存
-	task_b->tss.eip = (int) &task_b_main;
-	task_b->tss.es = 1 * 8;
-	task_b->tss.cs = 2 * 8;
-	task_b->tss.ss = 1 * 8;
-	task_b->tss.ds = 1 * 8;
-	task_b->tss.fs = 1 * 8;
-	task_b->tss.gs = 1 * 8;
-
-	*((int *) (task_b_esp + 4)) = (int) sht_back;	//因为：函数的第一个参数在esp+4处，即task_b_esp+4 ~ task_b_esp+7
-	task_run(task_b);
 	for (;;) {
 		io_cli();
 		if (fifo32_status(&fifo) == 0) {
@@ -151,20 +158,16 @@ void HariMain(void)
 						sheet_slide(sht_win, mx - 80, my - 8);
 					}
 				}
-			} else if (dat == 10) {
-				putfonts8_asc_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_008484, "10[sec]", 7);
-			} else if (dat == 3) {
-				putfonts8_asc_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_008484, "3[sec]", 6);
 			} else if (dat == 1) {
-				timer_init(timer3, &fifo, 0);
+				timer_init(timer, &fifo, 0);
 				course_c = COL8_000000;
-				timer_settime(timer3, 50);
+				timer_settime(timer, 50);
 				boxfill8(sht_win->buf, sht_win->xsize, course_c, course_x, 28, course_x + 7, 28 + 15);
 				sheet_refresh(sht_win, course_x, 28, course_x + 8, 28 + 16);
 			} else if (dat == 0) {
-				timer_init(timer3, &fifo, 1);
+				timer_init(timer, &fifo, 1);
 				course_c = COL8_FFFFFF;
-				timer_settime(timer3, 50);
+				timer_settime(timer, 50);
 				boxfill8(sht_win->buf, sht_win->xsize, course_c, course_x, 28, course_x + 7, 28 + 15);
 				sheet_refresh(sht_win, course_x, 28, course_x + 8, 28 + 16);
 			}
@@ -172,11 +175,12 @@ void HariMain(void)
 	}
 }
 
-void task_b_main(SHEET *sht_back)
+void task_b_main(SHEET *sht_win_b)
 {
 	FIFO32 fifo;
 	TIMER *timer_put;
-	int dat, fifobuf[128], count = 0;
+	int dat, fifobuf[128];
+	long count = 0;
 	char temp[30];
 
 	fifo32_init(&fifo, 128, fifobuf, 0);
@@ -192,8 +196,8 @@ void task_b_main(SHEET *sht_back)
 			dat = fifo32_get(&fifo);
 			io_sti();
 			if (dat == 1) {
-				sprintf(temp, "%11d", count);
-				putfonts8_asc_sht(sht_back, 0, 144, COL8_FFFFFF, COL8_008484, temp, 10);
+				sprintf(temp, "%16d", count);
+				putfonts8_asc_sht(sht_win_b, 4, 28, COL8_000000, COL8_C6C6C6, temp, 16);
 				timer_settime(timer_put, 10);
 			}
 		}

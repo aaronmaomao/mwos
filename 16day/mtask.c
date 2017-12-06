@@ -26,6 +26,7 @@ TASK *task_init(MEMMAN *mem)
 	}
 	task = task_alloc();
 	task->flags = 2;
+	task->priority = 2;
 	taskctl->runnum = 1;
 	taskctl->now = 0;
 	taskctl->taskseq[0] = task;
@@ -63,23 +64,33 @@ TASK *task_alloc(void)
 	return 0;
 }
 
-void task_run(TASK *task)
+/**
+ * 将task添加到运行队列
+ */
+void task_run(TASK *task, int priority)
 {
-	task->flags = 2;
-	taskctl->taskseq[taskctl->runnum] = task;
-	taskctl->runnum++;
+	if (priority > 0) {
+		task->priority = priority;
+	}
+	if (task->flags != 2) {
+		task->flags = 2;
+		taskctl->taskseq[taskctl->runnum] = task;
+		taskctl->runnum++;
+	}
 	return;
 }
 
 void task_switch(void)
 {
-	timer_settime(task_timer, 2);
+	TASK *task;
+	taskctl->now++;
+	if (taskctl->now == taskctl->runnum) {
+		taskctl->now = 0;
+	}
+	task = taskctl->taskseq[taskctl->now];
+	timer_settime(task_timer, task->priority);
 	if (taskctl->runnum >= 2) {
-		taskctl->now++;
-		if (taskctl->now == taskctl->runnum) {
-			taskctl->now = 0;
-		}
-		farjmp(0, taskctl->taskseq[taskctl->now]->sel);
+		farjmp(0, task->sel);
 	}
 	return;
 }

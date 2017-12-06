@@ -29,7 +29,7 @@ int fifo32_put(FIFO32 *fifo, int data)
 	fifo->free--;
 	if (fifo->task != 0) {
 		if (fifo->task->flags != 2) {	//非运行状态
-			task_run(fifo->task);	//唤醒
+			task_run(fifo->task, 0);	//唤醒, 不改变优先级
 		}
 	}
 	return 0;
