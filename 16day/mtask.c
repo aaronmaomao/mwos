@@ -24,12 +24,17 @@ TASK *task_init(MEMMAN *mem)
 		taskctl->task[i].sel = (TASK_BGDT + i) * 8;
 		set_segmdesc(gdt + TASK_BGDT + i, 103, (int) &taskctl->task[i].tss, AR_TSS32);
 	}
+
+	for (i = 0; i < MAX_TASKLEVELS; i++) {
+		taskctl->level[i].now = 0;
+		taskctl->level[i].runnum = 0;
+	}
 	task = task_alloc();
 	task->flags = 2;
 	task->priority = 2;
-	taskctl->runnum = 1;
-	taskctl->now = 0;
-	taskctl->taskseq[0] = task;
+	task->level = 0;
+	task_add(task);
+	task_switchsub();
 	load_tr(task->sel);
 	task_timer = timer_alloc();
 	timer_settime(task_timer, task->priority);
@@ -67,63 +72,116 @@ TASK *task_alloc(void)
 /**
  * 将task添加到运行队列
  */
-void task_run(TASK *task, int priority)
+void task_run(TASK *task, int level, int priority)
 {
+	if (level < 0) {
+		level = task->level;
+	}
 	if (priority > 0) {
 		task->priority = priority;
 	}
-	if (task->flags != 2) {
-		task->flags = 2;
-		taskctl->taskseq[taskctl->runnum] = task;
-		taskctl->runnum++;
+	if (task->flags == 2 && level != task->level) {
+		task_remove(task);	//改变当前运行任务的优先级组
 	}
+	if (task->flags != 2) {
+		task->level = level;
+		task_add(task);
+	}
+	taskctl->lv_change = 1;	//下次切换任务时检查level
 	return;
 }
 
 void task_switch(void)
 {
-	TASK *task;
-	taskctl->now++;
-	if (taskctl->now == taskctl->runnum) {
-		taskctl->now = 0;
+	TASKLEVEL *tl = &taskctl->level[taskctl->now_lv];
+	TASK *newtask, *nowtask = tl->tasks[tl->now];
+	tl->now++;
+	if (tl->now == tl->runnum) {
+		tl->now = 0;
 	}
-	task = taskctl->taskseq[taskctl->now];
-	timer_settime(task_timer, task->priority);
-	if (taskctl->runnum >= 2) {
-		farjmp(0, task->sel);
+	if (taskctl->lv_change != 0) {
+		task_switchsub();
+		tl = &taskctl->level[taskctl->now_lv];
+	}
+	newtask = tl->tasks[tl->now];
+	timer_settime(task_timer, newtask->priority);
+	if (newtask != nowtask) {
+		farjmp(0, newtask->sel);
 	}
 	return;
 }
 
 void task_sleep(TASK *task)
 {
-	int i;
-	char ts = 0;
+	TASK *nowtask;
 	if (task->flags == 2) {
-		if (task == taskctl->taskseq[taskctl->now]) {
-			ts = 1;	//task就是当前运行的任务，即自己睡眠自己
-		}
-
-		for (i = 0; i < taskctl->runnum; i++) {	//当前任务睡眠其他的任务
-			if (taskctl->taskseq[i] == task) {
-				break;
-			}
-		}
-		taskctl->runnum--;
-		if (i < taskctl->now) {
-			taskctl->now--;
-		}
-		for (; i < taskctl->runnum; i++) {
-			taskctl->taskseq[i] = taskctl->taskseq[i + 1];	//把要睡眠的任务从运行列队中踢掉
-		}
-		task->flags = 1;	//把当前task设为不工作（睡眠）状态
-
-		if (ts != 0) {	//自己睡眠自己
-			if (taskctl->now >= taskctl->runnum) {	//即位于任务列队的最后一位
-				taskctl->now = 0; //所以下一个任务为最前面的
-			}
-			farjmp(0, taskctl->taskseq[taskctl->now]->sel);
+		nowtask = task_now();
+		task_remove(task);
+		if (task == nowtask) {
+			task_switchsub();
+			nowtask = task_now();
+			farjmp(0, nowtask->sel);
 		}
 	}
+	return;
+}
+
+TASK *task_now(void)
+{
+	TASKLEVEL *tl = &(taskctl->level[taskctl->now_lv]);
+	return tl->tasks[tl->now];
+}
+/**
+ *	向优先级组中添加一个任务
+ */
+void task_add(TASK *task)
+{
+	TASKLEVEL *tl = &(taskctl->level[task->level]);
+	tl->tasks[tl->runnum] = task;
+	tl->runnum++;
+	task->flags = 2;
+	return;
+}
+
+/**
+ * 从优先级组中删除一个任务
+ */
+void task_remove(TASK *task)
+{
+	int i;
+	TASKLEVEL *tl = &(taskctl->level[task->level]);
+	for (i = 0; i < tl->runnum; i++) {
+		if (tl->tasks[i] == task) {
+			break;
+		}
+	}
+	tl->runnum--;
+	if (i < tl->now) {
+		tl->now--;
+	}
+	if (tl->now >= tl->runnum) {
+		tl->now = 0;
+	}
+	task->flags = 1;
+	for (; i < tl->runnum; i++) {
+		tl->tasks[i] = tl->tasks[i + 1];
+	}
+	return;
+}
+
+/**
+ * 判断下一个运行的优先级组
+ */
+void task_switchsub(void)
+{
+	int i;
+	for (i = 0; i < MAX_TASKLEVELS; i++) {
+		if (taskctl->level[i].runnum > 0) {
+			break;
+		}
+
+	}
+	taskctl->now_lv = i;
+	taskctl->lv_change = 0;
 	return;
 }

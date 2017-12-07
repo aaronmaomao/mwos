@@ -46,6 +46,8 @@ void HariMain(void)
 	shtctl = sheetctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
 	task_a = task_init(memman);
 	fifo.task = task_a;
+	task_run(task_a, 1, 0);
+
 	sht_back = sheet_alloc(shtctl);
 	sht_mouse = sheet_alloc(shtctl);
 	sht_win = sheet_alloc(shtctl);
@@ -73,7 +75,7 @@ void HariMain(void)
 		task_b[dat]->tss.fs = 1 * 8;
 		task_b[dat]->tss.gs = 1 * 8;
 		*((int *) (task_b[dat]->tss.esp + 4)) = (int) sht_win_b[dat];
-		task_run(task_b[dat], dat + 1);
+		task_run(task_b[dat], 2, dat + 1);
 	}
 
 	make_window8(buf_win, 144, 52, "window", 1);
