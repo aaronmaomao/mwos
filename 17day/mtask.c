@@ -17,12 +17,12 @@ TASK *task_init(MEMMAN *mem)
 {
 	int i;
 	TASK *mainTask, *idleTask;
-	SEGMENT_DESC *gdt = (SEGMENT_DESC *)ADR_GDT;
-	taskctl = (TASKCTL *)memman_alloc_4k(mem, sizeof(TASKCTL));
+	SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
+	taskctl = (TASKCTL *) memman_alloc_4k(mem, sizeof(TASKCTL));
 	for (i = 0; i < MAX_TASKS; i++) {
 		taskctl->task[i].flags = 0;
 		taskctl->task[i].sel = (TASK_BGDT + i) * 8;
-		set_segmdesc(gdt + TASK_BGDT + i, 103, (int)&taskctl->task[i].tss, AR_TSS32);
+		set_segmdesc(gdt + TASK_BGDT + i, 103, (int) &taskctl->task[i].tss, AR_TSS32);
 	}
 
 	for (i = 0; i < MAX_TASKLEVELS; i++) {
@@ -36,10 +36,10 @@ TASK *task_init(MEMMAN *mem)
 	task_add(mainTask);
 	task_switchsub();
 	load_tr(mainTask->sel);	//将主程序与第一个任务进行对应
-	
+
 	idleTask = task_alloc();	//配置处理器空闲任务，参考window
 	idleTask->tss.esp = memman_alloc_4k(mem, 64 * 1024);
-	idleTask->tss.eip = (int)&task_idle;
+	idleTask->tss.eip = (int) &task_idle;
 	idleTask->tss.es = 1 * 8;
 	idleTask->tss.cs = 2 * 8;
 	idleTask->tss.ss = 1 * 8;
