@@ -35,9 +35,9 @@ TASK *task_init(MEMMAN *mem)
 	task->level = 0;
 	task_add(task);
 	task_switchsub();
-	load_tr(task->sel);
-	task_timer = timer_alloc();
-	timer_settime(task_timer, task->priority);
+	load_tr(task->sel);	//将主程序与第一个任务进行对应
+	task_timer = timer_alloc();	//申请任务切换定时器
+	timer_settime(task_timer, task->priority);	//设置切换时间
 	return task;
 }
 
@@ -80,8 +80,8 @@ void task_run(TASK *task, int level, int priority)
 	if (priority > 0) {
 		task->priority = priority;
 	}
-	if (task->flags == 2 && level != task->level) {
-		task_remove(task);	//改变当前运行任务的优先级组
+	if (task->flags == 2 && level != task->level) {	//优先级组发生变化
+		task_remove(task);
 	}
 	if (task->flags != 2) {
 		task->level = level;
@@ -144,7 +144,7 @@ void task_add(TASK *task)
 }
 
 /**
- * 从优先级组中删除一个任务
+ * 从所属优先级组中删除一个任务
  */
 void task_remove(TASK *task)
 {
@@ -159,7 +159,7 @@ void task_remove(TASK *task)
 	if (i < tl->now) {
 		tl->now--;
 	}
-	if (tl->now >= tl->runnum) {
+	if (tl->now >= tl->runnum) {	//此处应该不会出现大于的情况
 		tl->now = 0;
 	}
 	task->flags = 1;

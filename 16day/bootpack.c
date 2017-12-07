@@ -45,7 +45,7 @@ void HariMain(void)
 	init_palette();
 	shtctl = sheetctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
 	task_a = task_init(memman);
-	fifo.task = task_a;
+	fifo.task = task_a;	//设置任务的fifo
 	task_run(task_a, 1, 0);
 
 	sht_back = sheet_alloc(shtctl);
