@@ -287,6 +287,7 @@ typedef struct TSS32 {
 typedef struct TASK {
 	int sel, flags;	//sel：GDT号
 	int level, priority;
+	FIFO32 fifo;
 	TSS32 tss;
 } TASK;
 
