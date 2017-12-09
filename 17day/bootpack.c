@@ -1,6 +1,8 @@
 #include "bootpack.h"
 #include "stdio.h"
 
+#define KEYCMD_LED 0xed
+
 static char keytable0[0x80] = {
 		0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0, 0,
 		'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', 0, 0, 'A', 'S',
@@ -26,10 +28,10 @@ void console_task(SHEET *sht);
 void HariMain(void)
 {
 	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
-	int fifobuf[128];
-	FIFO32 fifo_m;
+	int fifobuf[128], keycmd_buf[32];
+	FIFO32 fifo_m, keycmd;
 	int mx, my, dat, cursor_x = 8, course_c = COL8_FFFFFF;
-	char temp[40], key_to = 0, key_shift = 0;
+	char temp[40], key_to = 0, key_shift = 0, key_leds = (binfo->leds >> 4) & 0x07, keycmd_wait = -1;
 	MOUSE_DESCODE mdecode;
 	uint memtotal;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
@@ -108,7 +110,16 @@ void HariMain(void)
 	putfonts8_asc(buf_back, sht_back->xsize, 0, 0, COL8_FFFFFF, temp);
 	sprintf(temp, "memory = %dMB ,   free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, temp, 40);
+
+	fifo32_init(&keycmd, 32, keycmd_buf, 0);
+	fifo32_put(&keycmd, KEYCMD_LED);
+	fifo32_put(&keycmd, key_leds);
 	for (;;) {
+		if (fifo32_status(&keycmd) > 0 && keycmd_wait < 0) {	//控制键盘的led，使led状态与锁定键的状态保持一致
+			keycmd_wait = fifo32_get(&keycmd);
+			wait_KBC_sendready();
+			io_out8(PORT_KEYDAT, keycmd_wait);
+		}
 		io_cli();
 		if (fifo32_status(&fifo_m) == 0) {
 			//io_stihlt();
@@ -120,6 +131,28 @@ void HariMain(void)
 			if (256 <= dat && dat <= 511) {		//键盘数据
 				sprintf(temp, "%02X", dat - 256);
 				putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, temp, 2);
+				if (dat == 256 + 0x3a) {	//CapsLock键
+					key_leds ^= 4;
+					fifo32_put(&keycmd, KEYCMD_LED);
+					fifo32_put(&keycmd, key_leds);
+				}
+				if (dat == 256 + 0x45) {	//NumLock键
+					key_leds ^= 2;
+					fifo32_put(&keycmd, KEYCMD_LED);
+					fifo32_put(&keycmd, key_leds);
+				}
+				if (dat == 256 + 0x46) {	//ScrollLock键
+					key_leds ^= 1;
+					fifo32_put(&keycmd, KEYCMD_LED);
+					fifo32_put(&keycmd, key_leds);
+				}
+				if (dat == 256 + 0xfa) {	//键盘接收到了数据
+					keycmd_wait = -1;
+				}
+				if (dat == 256 + 0xfe) {	//键盘没有接收到数据，重发
+					wait_KBC_sendready();
+					io_out32(PORT_KEYDAT, keycmd_wait);
+				}
 				if (dat < 0x80 + 256) {	//将按键编码转为字符编码
 					if (key_shift == 0) {
 						temp[0] = keytable0[dat - 256];
@@ -128,6 +161,11 @@ void HariMain(void)
 					}
 				} else {
 					temp[0] = 0;
+				}
+				if ('A' <= temp[0] && temp[0] <= 'Z') {
+					if (((key_leds & 4) == 0 && key_shift == 0) || ((key_leds & 4) != 0 && key_shift != 0)) {
+						temp[0] += 0x20;
+					}
 				}
 				if (temp[0] != 0) {
 					if (key_to == 0) {

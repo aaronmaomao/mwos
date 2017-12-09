@@ -14,3 +14,7 @@ OK, stop here.
 添加tab键切换窗口的效果
 添加shift按键功能
 整理task、timer、fifo相关
+
+【2017年12月9日11:58:52】
+添加大小写转换（即Caps Lock键）
+控制键盘led状态（使锁定键状态与led状态保持一致）
