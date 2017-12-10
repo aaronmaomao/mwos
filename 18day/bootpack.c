@@ -1,5 +1,6 @@
 #include "bootpack.h"
 #include "stdio.h"
+#include "string.h"
 
 #define KEYCMD_LED 0xed
 
@@ -22,8 +23,17 @@ static char keytable1[0x80] = {
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		0, 0, 0, '_', 0, 0, 0, 0, 0, 0, 0, 0, 0, '|', 0, 0 };
 
+/** 软盘文件 */
+typedef struct FILEINFO {
+	uchar name[8], ext[3], type;
+	char reserve[10];	//保留
+	ushort time, date, clustno;	//时间，日期，簇号
+	uint size;	//文件大小
+} FILEINFO;
+
 extern void putfonts8_asc_sht(SHEET *sht, int lx, int ly, int color, int bcolor, char *str, int length);
-void console_task(SHEET *sht);
+void console_task(SHEET *sht, uint memtotal);
+int cons_newline(int cursor_y, SHEET *sht);
 
 void HariMain(void)
 {
@@ -50,7 +60,7 @@ void HariMain(void)
 	enable_mouse(&fifo_a, 512, &mdecode);
 	io_out8(PIC0_IMR, 0xf8); /* PIC1とキーボードを許可(11111000) */
 	io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111) */
-	memtotal = memtest(0x00400000, 0xffffffff);	//获取最大内存地址
+	memtotal = memtest(0x00400000, 0xffffffff);	//获取最大可管理内存
 	memman_init(memman);
 	memman_free(memman, 0x004000000, memtotal - 0x00400000);	//将最大空闲内存放入管理表中
 
@@ -72,7 +82,7 @@ void HariMain(void)
 	make_window8(buf_cons, 256, 165, "console", 0);
 	make_textbox8(sht_cons, 8, 28, 240, 128, COL8_000000);
 	task_cons = task_alloc();
-	task_cons->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 8;
+	task_cons->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;
 	task_cons->tss.eip = (int) &console_task;
 	task_cons->tss.es = 1 * 8;
 	task_cons->tss.cs = 2 * 8;
@@ -81,6 +91,7 @@ void HariMain(void)
 	task_cons->tss.fs = 1 * 8;
 	task_cons->tss.gs = 1 * 8;
 	*((int *) (task_cons->tss.esp + 4)) = (int) sht_cons;
+	*((int *) (task_cons->tss.esp + 8)) = memtotal;
 	task_run(task_cons, 2, 2);
 	//init win
 	sht_win = sheet_alloc(shtctl);
@@ -108,10 +119,10 @@ void HariMain(void)
 	sheet_updown(sht_win, 2);
 	sheet_updown(sht_mouse, 3);
 
-	sprintf(temp, "(%3d, %3d)", mx, my);
-	putfonts8_asc(buf_back, sht_back->xsize, 0, 0, COL8_FFFFFF, temp);
-	sprintf(temp, "memory = %dMB ,   free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
-	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, temp, 40);
+//	sprintf(temp, "(%3d, %3d)", mx, my);
+//	putfonts8_asc(buf_back, sht_back->xsize, 0, 0, COL8_FFFFFF, temp);
+//	sprintf(temp, "memory = %dMB ,   free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
+//	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, temp, 40);
 
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 	fifo32_put(&keycmd, KEYCMD_LED);
@@ -231,17 +242,17 @@ void HariMain(void)
 				sheet_refresh(sht_win, cursor_x, 28, cursor_x + 8, 28 + 16);
 			} else if (512 <= dat && dat <= 767) {	//鼠标数据
 				if (mouse_decode(&mdecode, dat - 512) != 0) {
-					sprintf(temp, "[lcr %4d %4d]", mdecode.x, mdecode.y);
-					if ((mdecode.btn & 0x01) != 0) {
-						temp[1] = 'L';
-					}
-					if ((mdecode.btn & 0x02) != 0) {
-						temp[3] = 'R';
-					}
-					if ((mdecode.btn & 0x04) != 0) {
-						temp[2] = 'C';
-					}
-					putfonts8_asc_sht(sht_back, 32, 16, COL8_FFFFFF, COL8_008484, temp, 15);
+//					sprintf(temp, "[lcr %4d %4d]", mdecode.x, mdecode.y);
+//					if ((mdecode.btn & 0x01) != 0) {
+//						temp[1] = 'L';
+//					}
+//					if ((mdecode.btn & 0x02) != 0) {
+//						temp[3] = 'R';
+//					}
+//					if ((mdecode.btn & 0x04) != 0) {
+//						temp[2] = 'C';
+//					}
+//					putfonts8_asc_sht(sht_back, 32, 16, COL8_FFFFFF, COL8_008484, temp, 15);
 					mx += mdecode.x;
 					my += mdecode.y;
 					if (mx < 0) {
@@ -256,8 +267,8 @@ void HariMain(void)
 					if (my > binfo->scrny - 1) {
 						my = binfo->scrny - 1;
 					}
-					sprintf(temp, "(%3d, %3d)", mx, my);
-					putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, temp, 10);
+//					sprintf(temp, "(%3d, %3d)", mx, my);
+//					putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, temp, 10);
 					sheet_slide(sht_mouse, mx, my);
 					if ((mdecode.btn & 0x01) != 0) {	//左键按下
 						sheet_slide(sht_win, mx - 80, my - 8);
@@ -285,12 +296,15 @@ void HariMain(void)
 	}
 }
 
-void console_task(SHEET *sht)
+void console_task(SHEET *sht, uint memtotal)
 {
 	TIMER *cursor_timer;
 	TASK *task = task_now();
-	char temp[30];
+	char temp[30], cmdLine[30];
 	int dat, fifobuf[128], cursor_x = 16, cursor_y = 28, cursor_col = -1, x, y;
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	FILEINFO *fileinfo = (FILEINFO *) (ADR_DISKIMG + 0x002600);
+
 	fifo32_init(&task->fifo, 128, fifobuf, task);
 	cursor_timer = timer_alloc();
 	timer_init(cursor_timer, &task->fifo, 1);
@@ -334,20 +348,50 @@ void console_task(SHEET *sht)
 					}
 				} else if (dat == 10 + 256) {	//回车键
 					putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_FFFFFF, COL8_000000, " ", 1);	//消除上一行的光标
-					if (cursor_y < 28 + 112) {
-						cursor_y += 16;
-					} else {	//如果到最下面一行
-						for (y = 28; y < 28 + 112; y++) {	//将所有颜色上移一行
-							for (x = 8; x < 8 + 240; x++) {
-								sht->buf[x + y * sht->xsize] = sht->buf[x + (y + 16) * sht->xsize];
-							}
-						}
-						for (y = 28 + 112; y < 28 + 128; y++) {	//将最下面的一行抹黑
+					cmdLine[cursor_x / 8 - 2] = 0;	//0表示命令结束
+					cursor_y = cons_newline(cursor_y, sht);	//换行
+					/* mem命令 */
+					if (strcmp(cmdLine, "mem") == 0) {
+						sprintf(temp, "total %dMB", memtotal / (1024 * 1024));
+						putfonts8_asc_sht(sht, 8, cursor_y, COL8_FFFFFF, COL8_000000, temp, 30);
+						cursor_y = cons_newline(cursor_y, sht);
+						sprintf(temp, "free %dKB", memman_total(memman) / 1024);
+						putfonts8_asc_sht(sht, 8, cursor_y, COL8_FFFFFF, COL8_000000, temp, 30);
+						cursor_y = cons_newline(cursor_y, sht);
+						cursor_y = cons_newline(cursor_y, sht);
+
+					} else if (strcmp(cmdLine, "cls") == 0) {	//cls命令
+						for (y = 28; y < 28 + 128; y++) {
 							for (x = 8; x < 8 + 240; x++) {
 								sht->buf[x + y * sht->xsize] = COL8_000000;
 							}
 						}
 						sheet_refresh(sht, 8, 28, 8 + 240, 28 + 128);
+						cursor_y = 28;
+					} else if (strcmp(cmdLine, "dir") == 0) {	//dir命令
+						for (x = 0; x < 224; x++) {
+							if (fileinfo[x].name[0] == 0x00) {	//0x00表示啥也没有
+								break;
+							}
+							if (fileinfo[x].name[0] != 0xe5) {	//0x05表示已删除
+								if ((fileinfo[x].type & 0x18) == 0) {
+									sprintf(temp, "filename.ext %7d", fileinfo[x].size);
+									for (y = 0; y < 8; y++) {	//文件名为8字节
+										temp[y] = fileinfo[x].name[y];
+									}
+									temp[9] = fileinfo[x].ext[0];
+									temp[10] = fileinfo[x].ext[1];
+									temp[11] = fileinfo[x].ext[2];
+									putfonts8_asc_sht(sht, 8, cursor_y, COL8_FFFFFF, COL8_000000, temp, 30);
+									cursor_y = cons_newline(cursor_y, sht);
+								}
+							}
+						}
+						cursor_y = cons_newline(cursor_y, sht);
+					} else if (cmdLine[0] != 0) {	//未知的命令
+						putfonts8_asc_sht(sht, 8, cursor_y, COL8_FFFFFF, COL8_000000, "Unknow command.", 15);
+						cursor_y = cons_newline(cursor_y, sht);
+						cursor_y = cons_newline(cursor_y, sht);
 					}
 					putfonts8_asc_sht(sht, 8, cursor_y, COL8_FFFFFF, COL8_000000, ">", 1);
 					cursor_x = 16;
@@ -355,6 +399,7 @@ void console_task(SHEET *sht)
 					if (cursor_x < 240) {
 						temp[0] = dat - 256;
 						temp[1] = 0;
+						cmdLine[cursor_x / 8 - 2] = dat - 256;	//将字符保存到cmdLine中
 						putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_FFFFFF, COL8_000000, temp, 1);
 						cursor_x += 8;
 					}
@@ -366,4 +411,31 @@ void console_task(SHEET *sht)
 			sheet_refresh(sht, cursor_x, cursor_y, cursor_x + 8, cursor_y + 16);
 		}
 	}
+}
+
+/**
+ * 控制台换行函数
+ * cursor_y：在哪一行换
+ * sht：要换行的sheet
+ * return:返回换行后的cursor_y
+ */
+int cons_newline(int cursor_y, SHEET *sht)
+{
+	int x, y;
+	if (cursor_y < 28 + 112) {	//不是最下面
+		cursor_y += 16;
+	} else {	//是最下面，需要滚动
+		for (y = 28; y < 28 + 112; y++) {	//将所有颜色上移一行
+			for (x = 8; x < 8 + 240; x++) {
+				sht->buf[x + y * sht->xsize] = sht->buf[x + (y + 16) * sht->xsize];
+			}
+		}
+		for (y = 28 + 112; y < 28 + 128; y++) {	//将最下面的一行抹黑
+			for (x = 8; x < 8 + 240; x++) {
+				sht->buf[x + y * sht->xsize] = COL8_000000;
+			}
+		}
+		sheet_refresh(sht, 8, 28, 8 + 240, 28 + 128);
+	}
+	return cursor_y;
 }

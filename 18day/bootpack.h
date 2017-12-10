@@ -7,6 +7,7 @@
 
 typedef unsigned char uchar;
 typedef unsigned int uint;
+typedef unsigned short ushort;
 
 typedef struct BOOTINFO { /* 0x0ff0-0x0fff */
 	char cyls; /* ブートセクタはどこまでディスクを読んだのか */
@@ -18,6 +19,7 @@ typedef struct BOOTINFO { /* 0x0ff0-0x0fff */
 } BOOTINFO;
 
 #define ADR_BOOTINFO	0x00000ff0
+#define ADR_DISKIMG		0x00100000	//从软盘复制到在内存中的地址
 
 /* naskfunc.nas */
 void io_hlt(void);
