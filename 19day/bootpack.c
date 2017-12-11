@@ -119,11 +119,6 @@ void HariMain(void)
 	sheet_updown(sht_win, 2);
 	sheet_updown(sht_mouse, 3);
 
-//	sprintf(temp, "(%3d, %3d)", mx, my);
-//	putfonts8_asc(buf_back, sht_back->xsize, 0, 0, COL8_FFFFFF, temp);
-//	sprintf(temp, "memory = %dMB ,   free = %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
-//	putfonts8_asc_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_008484, temp, 40);
-
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 	fifo32_put(&keycmd, KEYCMD_LED);
 	fifo32_put(&keycmd, key_leds);
@@ -242,17 +237,6 @@ void HariMain(void)
 				sheet_refresh(sht_win, cursor_x, 28, cursor_x + 8, 28 + 16);
 			} else if (512 <= dat && dat <= 767) {	//鼠标数据
 				if (mouse_decode(&mdecode, dat - 512) != 0) {
-//					sprintf(temp, "[lcr %4d %4d]", mdecode.x, mdecode.y);
-//					if ((mdecode.btn & 0x01) != 0) {
-//						temp[1] = 'L';
-//					}
-//					if ((mdecode.btn & 0x02) != 0) {
-//						temp[3] = 'R';
-//					}
-//					if ((mdecode.btn & 0x04) != 0) {
-//						temp[2] = 'C';
-//					}
-//					putfonts8_asc_sht(sht_back, 32, 16, COL8_FFFFFF, COL8_008484, temp, 15);
 					mx += mdecode.x;
 					my += mdecode.y;
 					if (mx < 0) {
@@ -267,8 +251,6 @@ void HariMain(void)
 					if (my > binfo->scrny - 1) {
 						my = binfo->scrny - 1;
 					}
-//					sprintf(temp, "(%3d, %3d)", mx, my);
-//					putfonts8_asc_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_008484, temp, 10);
 					sheet_slide(sht_mouse, mx, my);
 					if ((mdecode.btn & 0x01) != 0) {	//左键按下
 						sheet_slide(sht_win, mx - 80, my - 8);
@@ -300,7 +282,7 @@ void console_task(SHEET *sht, uint memtotal)
 {
 	TIMER *cursor_timer;
 	TASK *task = task_now();
-	char temp[30], cmdLine[30];
+	char temp[30], cmdLine[30], *p;
 	int dat, fifobuf[128], cursor_x = 16, cursor_y = 28, cursor_col = -1, x, y;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 	FILEINFO *fileinfo = (FILEINFO *) (ADR_DISKIMG + 0x002600);
@@ -386,6 +368,59 @@ void console_task(SHEET *sht, uint memtotal)
 									cursor_y = cons_newline(cursor_y, sht);
 								}
 							}
+						}
+						cursor_y = cons_newline(cursor_y, sht);
+					} else if (cmdLine[0] == 't'&&cmdLine[1] == 'y'&&cmdLine[2] == 'p'&&cmdLine[3] == 'e'&&cmdLine[4] == ' ') {	//type 命令（有参数：文件名.扩展名）
+						for (y = 0; y < 11; y++) {
+							temp[y] = ' ';
+						}
+						y = 0;
+						for (x = 5; y < 11 && cmdLine[x] != 0; x++) {
+							if (cmdLine[x] == '.'&&y <= 8) {	//文件名部分
+								y = 8;
+							}
+							else {
+								temp[y] = cmdLine[x];
+								if ('a'<=temp[y]&&temp[y]<='z')
+								{
+									temp[y] -= 0x20;	//将小写字母转为大写
+								}
+								y++;
+							}
+						}
+						for (x = 0; x < 224;) {
+							if (fileinfo[x].name[0] == 0x00) {
+								break;
+							}
+							if (fileinfo[x].type & 0x18 == 0) {
+								for (y = 0; y < 11; y++) {
+									if (fileinfo[x].name[y] != temp[y]) {
+										goto type_next_file;
+									}
+								}
+								break;
+							}
+							type_next_file:
+							x++;
+						}
+						if (x < 224 && fileinfo[x].name[0] != 0x00) {	//找到了
+							y = fileinfo[x].size;
+							p = (char *)(fileinfo[x].clustno * 512 + 0x003e00 + ADR_DISKIMG);
+							cursor_x = 8;
+							for (x = 0; x < y; x++) {
+								temp[0] = p[x];
+								temp[1] = 0;
+								putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_FFFFFF, COL8_000000, temp, 1);
+								cursor_x += 8;
+							}
+							if (cursor_x == 8 + 240) {
+								cursor_x = 8;
+								cursor_y = cons_newline(cursor_y, sht);
+							}
+						}
+						else {	//没找到
+							putfonts8_asc_sht(sht, cursor_x, cursor_y, COL8_FFFFFF, COL8_000000, "File not found", 15);
+							cursor_y = cons_newline(cursor_y, sht);
 						}
 						cursor_y = cons_newline(cursor_y, sht);
 					} else if (cmdLine[0] != 0) {	//未知的命令
