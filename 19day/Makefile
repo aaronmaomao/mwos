@@ -47,7 +47,7 @@ mwos.img: ipl10.bin os.sys Makefile
 	$(edimg) imgin:$(toolpath)fdimg0at.tek wbinimg src:$(objp)ipl10.bin len:512 from:0 to:0 \
 	copy from:$(objp)os.sys to:@: \
 	copy from:ipl10.asm to:@: \
-	copy from:run.bat to:@: \
+	copy from:Makefile to:@: \
 	imgout:../mwos.img
 
 ipl10.bin: ipl10.asm Makefile

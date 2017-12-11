@@ -28,6 +28,7 @@ void io_sti(void);
 void io_stihlt(void);
 int io_in8(int port);
 void io_out8(int port, int data);
+void io_out32(int port, int data);
 int io_load_eflags(void);
 void io_store_eflags(int eflags);
 void load_gdtr(int limit, int addr);
@@ -233,6 +234,7 @@ void sheet_free(SHEET *sht);
 /** window.c */
 void make_window8(uchar *buf, int xsize, int ysize, char *title, char act);
 void make_textbox8(SHEET *sht, int lx, int ly, int length, int height, int color);
+void make_wtitle8(uchar *buf, int xsize, char *title, char act);
 
 /** timer.c */
 #define PIT_CTRL	0x0043	//定时器(8254)的port
