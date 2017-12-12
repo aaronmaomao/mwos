@@ -6,6 +6,8 @@
  */
 
 #include "bootpack.h"
+#include "string.h"
+#include "stdio.h"
 
 void console_task(SHEET *sht, uint memtotal)
 {
