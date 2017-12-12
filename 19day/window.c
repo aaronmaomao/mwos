@@ -16,7 +16,6 @@ void make_wtitle8(uchar *buf, int xsize, char *title, char act);
 //绘制窗口
 void make_window8(uchar *buf, int xsize, int ysize, char *title, char act)
 {
-	char tbcolor;
 	boxfill8(buf, xsize, COL8_C6C6C6, 0, 0, xsize - 1, 0);
 	boxfill8(buf, xsize, COL8_FFFFFF, 1, 1, xsize - 2, 1);
 	boxfill8(buf, xsize, COL8_C6C6C6, 0, 0, 0, ysize - 1);
