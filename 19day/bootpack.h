@@ -231,11 +231,6 @@ void sheet_slide(SHEET *sht, int lx, int ly);
  */
 void sheet_free(SHEET *sht);
 
-/** window.c */
-void make_window8(uchar *buf, int xsize, int ysize, char *title, char act);
-void make_textbox8(SHEET *sht, int lx, int ly, int length, int height, int color);
-void make_wtitle8(uchar *buf, int xsize, char *title, char act);
-
 /** timer.c */
 #define PIT_CTRL	0x0043	//定时器(8254)的port
 #define PIT_CNT0	0x0040
@@ -320,5 +315,26 @@ void task_add(TASK *task);
 void task_remove(TASK *task);
 void task_switchsub(void);
 void task_idle(void);	//处理器空闲
+
+/** window.c */
+void make_window8(uchar *buf, int xsize, int ysize, char *title, char act);
+void make_textbox8(SHEET *sht, int lx, int ly, int length, int height, int color);
+void make_wtitle8(uchar *buf, int xsize, char *title, char act);
+void putfonts8_asc_sht(SHEET *sht, int lx, int ly, int color, int bcolor, char *str, int length);
+
+/** console.c */
+void console_task(SHEET *sht, uint memtotal);
+int cons_newline(int cursor_y, SHEET *sht);
+
+/** file.c */
+/** 软盘文件 */
+typedef struct FILEINFO {
+	uchar name[8], ext[3], type;
+	char reserve[10];	//保留
+	ushort time, date, clustno;	//时间，日期，簇号
+	uint size;	//文件大小
+} FILEINFO;
+void file_loadfile(int clustno, int size, char *buf, int *fat, char *img);
+void file_readfat(int *fat, uchar *img);
 
 #endif

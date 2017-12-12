@@ -15,7 +15,9 @@ bootobjs = $(objp)bootpack.obj \
 		   $(objp)sheet.obj \
 		   $(objp)window.obj \
 		   $(objp)timer.obj \
-		   $(objp)mtask.obj
+		   $(objp)mtask.obj \
+		   $(objp)console.obj \
+		   $(objp)file.obj
 
 make = $(toolpath)make.exe -r
 #制作img镜像
@@ -48,6 +50,7 @@ mwos.img: ipl10.bin os.sys Makefile
 	copy from:$(objp)os.sys to:@: \
 	copy from:ipl10.asm to:@: \
 	copy from:Makefile to:@: \
+	copy from:hlt.mwe to:@: \
 	imgout:../mwos.img
 
 ipl10.bin: ipl10.asm Makefile
@@ -104,5 +107,3 @@ clean:
 	del /Q .\obj\*.map
 	del /Q .\obj\*.bin
 	del /Q .\obj\*.sys
-	
-	
