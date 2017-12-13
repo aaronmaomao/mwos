@@ -13,7 +13,9 @@
 	GLOBAL	_load_cr0, _store_cr0
 	GLOBAL	_memtest_sub
 	GLOBAL	_load_tr, _taskswitch3, _taskswitch4, _farjmp
+	GLOBAL	_asm_cons_putchar, _farcall
 	EXTERN	_inthandler20, _inthandler21, _inthandler27, _inthandler2c
+	EXTERN 	_cons_putchar
 ;实际函数
 [section .text]
 _io_hlt:
@@ -191,4 +193,17 @@ _taskswitch4:
 	RET
 _farjmp:	; void farjump(int eip, int cs)
 	JMP		FAR [ESP+4]
+	RET
+_asm_cons_putchar:
+	STI		;因为中断机制会自动CLI
+	PUSH	1	;参数move
+	AND 	EAX, 0xff	;参数 chr
+	PUSH	EAX
+	PUSH 	DWORD [0x0fec]	;参数cons
+	CALL	_cons_putchar
+	ADD		ESP, 12		;丢弃刚才压栈的数据（共4b*3）
+	;RETF			;far-call的返回
+	IRETD	;中断的返回
+_farcall:	;void farcall(int eip, int cs)
+	CALL	FAR [ESP+4];eip, cs
 	RET

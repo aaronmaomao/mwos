@@ -16,20 +16,21 @@ void console_task(SHEET *sht, uint memtotal)
 	char cmdLine[30];
 	CONSOLE cons;
 	int dat, fifobuf[128];
-	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
-	int *fat = (int *)memman_alloc_4k(memman, 4 * 2880);
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	int *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 
 	cons.cur_x = 8;
 	cons.cur_y = 28;
 	cons.cur_c = -1;
 	cons.sht = sht;
-	
+	*((int *) 0x0fec) = (int) &cons;
+
 	fifo32_init(&task->fifo, 128, fifobuf, task);
 	cursor_timer = timer_alloc();
 	timer_init(cursor_timer, &task->fifo, 1);
 	timer_settime(cursor_timer, 50);
 
-	file_readfat(fat, (uchar *)(ADR_DISKIMG + 0x000200));
+	file_readfat(fat, (uchar *) (ADR_DISKIMG + 0x000200));
 	cons_putchar(&cons, '>', 1);
 
 	for (;;) {
@@ -71,7 +72,7 @@ void console_task(SHEET *sht, uint memtotal)
 					}
 				}
 				else if (dat == 10 + 256) {	//回车键
-					cons_putchar(&cons, ' ', 1);
+					cons_putchar(&cons, ' ', 0);
 					cmdLine[cons.cur_x / 8 - 2] = 0;	//0表示命令结束
 					cons_newline(&cons);	//换行
 					cons_runcmd(cmdLine, &cons, fat, memtotal);
@@ -118,45 +119,45 @@ void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal)
 	return;
 }
 
-
 /* hlt 命令 */
 void cmd_hlt(CONSOLE *cons, int *fat)
 {
 	char *p;
-	FILEINFO *fileinfo = file_search("HLT.MWE", (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);
-	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
-	SEGMENT_DESC *gdt = (SEGMENT_DESC *)ADR_GDT;
+	FILEINFO *fileinfo = file_search("HLT.MWE", (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
 
 	if (fileinfo != 0) {
-		p = (char *)memman_alloc_4k(memman, fileinfo->size);
-		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *)(ADR_DISKIMG + 0x003e00));
-		set_segmdesc(gdt + 1003, fileinfo->size - 1, (int)p, AR_CODE32_ER);	//注：1003之前的都被用了
-		farjmp(0, 1003 * 8);
-		memman_free_4k(memman, (int)p, fileinfo->size);
+		p = (char *) memman_alloc_4k(memman, fileinfo->size);
+		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
+		set_segmdesc(gdt + 1003, fileinfo->size - 1, (int) p, AR_CODE32_ER);	//注：1003之前的都被用了
+		farcall(0, 1003 * 8);
+		memman_free_4k(memman, (int) p, fileinfo->size);
 	}
 	else {
 		putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, "File not found.", 15);
 		cons_newline(cons);
 	}
+	cons_newline(cons);
 	return;
 }
 
 /* type 命令 */
-void cmd_type(CONSOLE *cons, int *fat, char *cmdLine) 
+void cmd_type(CONSOLE *cons, int *fat, char *cmdLine)
 {
 	int i;
 	char *p;
-	FILEINFO *fileinfo = file_search(cmdLine + 5, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);
-	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
+	FILEINFO *fileinfo = file_search(cmdLine + 5, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 
 	if (fileinfo != 0) {
-		p = (char *)memman_alloc_4k(memman, fileinfo->size);
-		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *)(ADR_DISKIMG + 0x003e00));
+		p = (char *) memman_alloc_4k(memman, fileinfo->size);
+		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
 		for (i = 0; i < fileinfo->size; i++) {
 			cons_putchar(cons, p[i], 1);
 
 		}
-		memman_free_4k(memman, (int)p, fileinfo->size);
+		memman_free_4k(memman, (int) p, fileinfo->size);
 	}
 	else {	//没找到
 		putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, "File not found.", 15);
@@ -167,11 +168,11 @@ void cmd_type(CONSOLE *cons, int *fat, char *cmdLine)
 }
 
 /* dir 命令 */
-void cmd_dir(CONSOLE *cons) 
+void cmd_dir(CONSOLE *cons)
 {
 	int i, j;
 	char temp[30];
-	FILEINFO *fileinfo = (FILEINFO *)(ADR_DISKIMG + 0x002600);
+	FILEINFO *fileinfo = (FILEINFO *) (ADR_DISKIMG + 0x002600);
 	for (i = 0; i < 224; i++) {
 		if (fileinfo[i].name[0] == 0x00) {	//0x00表示啥也没有
 			break;
@@ -195,7 +196,7 @@ void cmd_dir(CONSOLE *cons)
 }
 
 /** cls命令 */
-void cmd_cls(CONSOLE *cons) 
+void cmd_cls(CONSOLE *cons)
 {
 	int x, y;
 	for (y = 28; y < 28 + 128; y++) {
@@ -208,9 +209,10 @@ void cmd_cls(CONSOLE *cons)
 }
 
 /** mem命令 */
-void cmd_mem(CONSOLE *cons, uint memtotal) {
+void cmd_mem(CONSOLE *cons, uint memtotal)
+{
 	char temp[30];
-	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 	sprintf(temp, "total %dMB", memtotal / (1024 * 1024));
 	putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, temp, 30);
 	cons_newline(cons);
@@ -221,10 +223,10 @@ void cmd_mem(CONSOLE *cons, uint memtotal) {
 	return;
 }
 
-/** 输出一个字符到控制台 
+/** 输出一个字符到控制台
  *  move : 是否移动光标
  */
-void cons_putchar(CONSOLE *cons, int chr, char move) 
+void cons_putchar(CONSOLE *cons, int chr, char move)
 {
 	char temp[2];
 	temp[0] = chr;
@@ -268,7 +270,7 @@ void cons_putchar(CONSOLE *cons, int chr, char move)
 void cons_newline(CONSOLE *cons)
 {
 	int x, y;
-	if (cons->cur_x < 28 + 112) {	//不是最下面
+	if (cons->cur_y < 28 + 112) {	//不是最下面
 		cons->cur_y += 16;
 	}
 	else {	//是最下面，需要滚动

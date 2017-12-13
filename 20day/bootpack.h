@@ -41,7 +41,9 @@ int load_cr0(void);
 void store_cr0(int cr0);
 uint memtest_sub(uint start, uint end);	//计算内存大小（通过不断向内存单元存入数据，然后再检查是否正确 来判断内存大小）
 void load_tr(int tr);	//设置任务寄存器
-void farjmp(int eip, int cs);
+void farjmp(int eip, int cs);	//jmp无返回
+void farcall(int eip, int cs);	//call有返回
+void asm_cons_putchar(void);
 
 /* fifo.c */
 typedef struct FIFO32 {

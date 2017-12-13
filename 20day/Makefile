@@ -40,6 +40,7 @@ makefont = $(toolpath)makefont.exe
 bin2obj = $(toolpath)bin2obj.exe
 
 default:
+	$(nask) hlt.asm hlt.mwe
 	$(make) img
 
 img: 
