@@ -7,6 +7,50 @@
 
 #include "bootpack.h"
 
+/**
+ * max：文件数的最大值
+ */
+FILEINFO *file_search(char *name, FILEINFO *fileinfo, int max)
+{
+	int i, j;
+	char temp[12];
+	for (j = 0; j < 11; j++) {
+		temp[j] = ' ';
+	}
+	j = 0;
+	for (i = 0; name[i] != 0; i++) {
+		if (j >= 11) {
+			return 0;
+		} 
+		if (name[i] == '.'&&j <= 8) {
+			j = 8;
+		}
+		else {
+			temp[j] = name[i];
+			if ('a' <= temp[j] && temp[j] <= 'z') {
+				temp[j] -= 0x20;
+			}
+			j++;
+		}
+	}
+	for (i = 0; i < max;) {
+		if (fileinfo[i].name[0] == 0x00) {
+			break;
+		}
+		if ((fileinfo[i].type & 0x18) == 0) {
+			for (j = 0; j < 11; j++) {
+				if (fileinfo[i].name[j] != temp[j]) {
+					goto next_file;
+				}
+			}
+			return fileinfo + i; //返回fileinfo的地址
+		}
+	next_file:
+		i++;
+	}
+	return 0; //没找到
+}
+
 void file_loadfile(int clustno, int size, char *buf, int *fat, char *img)
 {
 	int i;

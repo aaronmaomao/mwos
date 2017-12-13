@@ -323,8 +323,20 @@ void make_wtitle8(uchar *buf, int xsize, char *title, char act);
 void putfonts8_asc_sht(SHEET *sht, int lx, int ly, int color, int bcolor, char *str, int length);
 
 /** console.c */
+typedef struct CONSOLE
+{
+	SHEET *sht;
+	int cur_x, cur_y, cur_c;
+} CONSOLE;
 void console_task(SHEET *sht, uint memtotal);
-int cons_newline(int cursor_y, SHEET *sht);
+void cons_newline(CONSOLE *cons);
+void cons_putchar(CONSOLE *cons, int chr, char move);
+void cmd_mem(CONSOLE *cons, uint memtotal);
+void cmd_cls(CONSOLE *cons);
+void cmd_dir(CONSOLE *cons);
+void cmd_type(CONSOLE *cons, int *fat, char *cmdLine);
+void cmd_hlt(CONSOLE *cons, int *fat);
+void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal);
 
 /** file.c */
 /** 软盘文件 */
@@ -334,6 +346,8 @@ typedef struct FILEINFO {
 	ushort time, date, clustno;	//时间，日期，簇号
 	uint size;	//文件大小
 } FILEINFO;
+
+FILEINFO *file_search(char *name, FILEINFO *fileinfo, int max);
 void file_loadfile(int clustno, int size, char *buf, int *fat, char *img);
 void file_readfat(int *fat, uchar *img);
 
