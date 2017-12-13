@@ -16,6 +16,7 @@ void console_task(SHEET *sht, uint memtotal)
 	char temp[30], cmdLine[30], *p;
 	int dat, fifobuf[128], cursor_x = 16, cursor_y = 28, cursor_col = -1, x, y;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	SEGMENT_DESC *gdt = (SEGMENT_DESC *)ADR_GDT;
 	FILEINFO *fileinfo = (FILEINFO *) (ADR_DISKIMG + 0x002600);
 	int *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 
@@ -184,6 +185,43 @@ void console_task(SHEET *sht, uint memtotal)
 							cursor_y = cons_newline(cursor_y, sht);
 						}
 						cursor_y = cons_newline(cursor_y, sht);
+					}
+					else if (strcmp(cmdLine, "hlt") == 0) {	//hlt命令
+						for (y = 0; y < 11; y++) {
+							temp[y] = ' ';
+						}
+						temp[0] = 'H';
+						temp[1] = 'L';
+						temp[2] = 'T';
+						temp[8] = 'M';
+						temp[9] = 'W';
+						temp[10] = 'E';
+						for (x = 0; x < 224;) {
+							if (fileinfo[x].name[0] == 0x00) {
+								break;
+							}
+							if ((fileinfo[x].type & 0x18) == 0) {
+								for (y = 0; y < 11; y++) {
+									if (fileinfo[x].name[y] != temp[y]) {
+										goto hlt_next_file;	
+									}
+								}
+								break;	//找到文件了
+							}
+							hlt_next_file:
+							x++;
+						}
+						if (x < 224 && fileinfo[x].name[0] != 0x00) {
+							p = (char *)memman_alloc_4k(memman, fileinfo[x].size);
+							file_loadfile(fileinfo[x].clustno, fileinfo[x].size, p, fat, (char *)(ADR_DISKIMG + 0x003e00));
+							set_segmdesc(gdt + 1003, fileinfo[x].size - 1, (int)p, AR_CODE32_ER);	//注：1003之前的都被用了
+							farjmp(0, 1003 * 8);
+							memman_free_4k(memman, (int)p, fileinfo[x].size);
+						}
+						else {
+							putfonts8_asc_sht(sht, 8, cursor_y, COL8_FFFFFF, COL8_000000, "File not found.", 15);
+							cursor_y = cons_newline(cursor_y, sht);
+						}
 					}
 					else if (cmdLine[0] != 0) {	//未知的命令
 						putfonts8_asc_sht(sht, 8, cursor_y, COL8_FFFFFF, COL8_000000, "Unknow command.", 15);
