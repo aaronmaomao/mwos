@@ -337,7 +337,7 @@ void cmd_mem(CONSOLE *cons, uint memtotal);
 void cmd_cls(CONSOLE *cons);
 void cmd_dir(CONSOLE *cons);
 void cmd_type(CONSOLE *cons, int *fat, char *cmdLine);
-void cmd_hlt(CONSOLE *cons, int *fat);
+int cmd_app(CONSOLE *cons, int *fat, char *cmdline);
 void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal);
 
 /** file.c */

@@ -108,38 +108,52 @@ void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal)
 	else if (strncmp(cmdLine, "type ", 5) == 0) {	//type 命令（有参数：文件名.扩展名）
 		cmd_type(cons, fat, cmdLine);
 	}
-	else if (strcmp(cmdLine, "hlt") == 0) {	//hlt命令
-		cmd_hlt(cons, fat);
-	}
-	else if (cmdLine[0] != 0) {	//未知的命令
-		putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, "Unknow command.", 15);
-		cons_newline(cons);
-		cons_newline(cons);
+	else if (cmdLine[0] != 0) {	
+		if (cmd_app(cons, fat, cmdLine) == 0) { //不是命令也不是应用程序
+			putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, "Unknow command.", 15);
+			cons_newline(cons);
+			cons_newline(cons);
+		}
 	}
 	return;
 }
 
 /* hlt 命令 */
-void cmd_hlt(CONSOLE *cons, int *fat)
+int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 {
 	char *p;
-	FILEINFO *fileinfo = file_search("HLT.MWE", (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+	char name[18];
+	int i;
+	FILEINFO *fileinfo;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 	SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
 
+	for (i = 0; i < 13; i++) {
+		if (cmdLine[i] <= ' ') {
+			break;
+		}
+		name[i] = cmdLine[i];
+	}
+	name[i] = 0;
+	fileinfo = file_search(name, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);//不加后缀名查找
+	if (fileinfo == 0 && name[i - 1] != '.') {
+		name[i] = '.';
+		name[i + 1] = 'M';
+		name[i + 2] = 'W';
+		name[i + 3] = 'E';
+		name[i + 4] = 0;
+		fileinfo = file_search(name, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);  //加上后缀名重新查找
+	}
 	if (fileinfo != 0) {
 		p = (char *) memman_alloc_4k(memman, fileinfo->size);
 		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
 		set_segmdesc(gdt + 1003, fileinfo->size - 1, (int) p, AR_CODE32_ER);	//注：1003之前的都被用了
 		farcall(0, 1003 * 8);
 		memman_free_4k(memman, (int) p, fileinfo->size);
-	}
-	else {
-		putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, "File not found.", 15);
 		cons_newline(cons);
+		return 1;
 	}
-	cons_newline(cons);
-	return;
+	return 0;
 }
 
 /* type 命令 */

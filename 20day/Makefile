@@ -40,7 +40,7 @@ makefont = $(toolpath)makefont.exe
 bin2obj = $(toolpath)bin2obj.exe
 
 default:
-	$(nask) hlt.asm hlt.mwe
+	$(nask) hello.asm hello.mwe
 	$(make) img
 
 img: 
@@ -51,7 +51,7 @@ mwos.img: ipl10.bin os.sys Makefile
 	copy from:$(objp)os.sys to:@: \
 	copy from:ipl10.asm to:@: \
 	copy from:Makefile to:@: \
-	copy from:hlt.mwe to:@: \
+	copy from:hello.mwe to:@: \
 	imgout:../mwos.img
 
 ipl10.bin: ipl10.asm Makefile

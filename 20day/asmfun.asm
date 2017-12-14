@@ -196,6 +196,7 @@ _farjmp:	; void farjump(int eip, int cs)
 	RET
 _asm_cons_putchar:
 	STI		;因为中断机制会自动CLI
+	PUSHAD
 	PUSH	1	;参数move
 	AND 	EAX, 0xff	;参数 chr
 	PUSH	EAX
@@ -203,6 +204,7 @@ _asm_cons_putchar:
 	CALL	_cons_putchar
 	ADD		ESP, 12		;丢弃刚才压栈的数据（共4b*3）
 	;RETF			;far-call的返回
+	POPAD
 	IRETD	;中断的返回
 _farcall:	;void farcall(int eip, int cs)
 	CALL	FAR [ESP+4];eip, cs
