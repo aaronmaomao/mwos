@@ -43,7 +43,8 @@ uint memtest_sub(uint start, uint end);	//计算内存大小（通过不断向�
 void load_tr(int tr);	//设置任务寄存器
 void farjmp(int eip, int cs);	//jmp无返回
 void farcall(int eip, int cs);	//call有返回
-void asm_cons_putchar(void);
+void asm_mwe_api(void);
+void mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
 
 /* fifo.c */
 typedef struct FIFO32 {
@@ -339,6 +340,8 @@ void cmd_dir(CONSOLE *cons);
 void cmd_type(CONSOLE *cons, int *fat, char *cmdLine);
 int cmd_app(CONSOLE *cons, int *fat, char *cmdline);
 void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal);
+void cons_putstr0(CONSOLE *cons, char *str);
+void cons_putstr1(CONSOLE *cons, char *str, int len);
 
 /** file.c */
 /** 软盘文件 */

@@ -108,17 +108,15 @@ void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal)
 	else if (strncmp(cmdLine, "type ", 5) == 0) {	//type 命令（有参数：文件名.扩展名）
 		cmd_type(cons, fat, cmdLine);
 	}
-	else if (cmdLine[0] != 0) {	
+	else if (cmdLine[0] != 0) {
 		if (cmd_app(cons, fat, cmdLine) == 0) { //不是命令也不是应用程序
-			putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, "Unknow command.", 15);
-			cons_newline(cons);
-			cons_newline(cons);
+			cons_putstr0(cons, "Unknow command.\n\n");
 		}
 	}
 	return;
 }
 
-/* hlt 命令 */
+/* 运行app 命令 */
 int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 {
 	char *p;
@@ -135,14 +133,14 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 		name[i] = cmdLine[i];
 	}
 	name[i] = 0;
-	fileinfo = file_search(name, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);//不加后缀名查找
+	fileinfo = file_search(name, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224); //不加后缀名查找
 	if (fileinfo == 0 && name[i - 1] != '.') {
 		name[i] = '.';
 		name[i + 1] = 'M';
 		name[i + 2] = 'W';
 		name[i + 3] = 'E';
 		name[i + 4] = 0;
-		fileinfo = file_search(name, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);  //加上后缀名重新查找
+		fileinfo = file_search(name, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);  //加上后缀名重新查找
 	}
 	if (fileinfo != 0) {
 		p = (char *) memman_alloc_4k(memman, fileinfo->size);
@@ -159,7 +157,6 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 /* type 命令 */
 void cmd_type(CONSOLE *cons, int *fat, char *cmdLine)
 {
-	int i;
 	char *p;
 	FILEINFO *fileinfo = file_search(cmdLine + 5, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
@@ -167,15 +164,14 @@ void cmd_type(CONSOLE *cons, int *fat, char *cmdLine)
 	if (fileinfo != 0) {
 		p = (char *) memman_alloc_4k(memman, fileinfo->size);
 		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
-		for (i = 0; i < fileinfo->size; i++) {
-			cons_putchar(cons, p[i], 1);
-
-		}
+//		for (i = 0; i < fileinfo->size; i++) {
+//			cons_putchar(cons, p[i], 1);
+//		}
+		cons_putstr1(cons, p, fileinfo->size);
 		memman_free_4k(memman, (int) p, fileinfo->size);
 	}
 	else {	//没找到
-		putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, "File not found.", 15);
-		cons_newline(cons);
+		cons_putstr0(cons, "File not found.\n");
 	}
 	cons_newline(cons);
 	return;
@@ -200,7 +196,7 @@ void cmd_dir(CONSOLE *cons)
 				temp[9] = fileinfo[i].ext[0];
 				temp[10] = fileinfo[i].ext[1];
 				temp[11] = fileinfo[i].ext[2];
-				putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, temp, 30);
+				cons_putstr0(cons, temp);
 				cons_newline(cons);
 			}
 		}
@@ -225,19 +221,37 @@ void cmd_cls(CONSOLE *cons)
 /** mem命令 */
 void cmd_mem(CONSOLE *cons, uint memtotal)
 {
-	char temp[30];
+	char temp[60];
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
-	sprintf(temp, "total %dMB", memtotal / (1024 * 1024));
-	putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, temp, 30);
+	sprintf(temp, "total %dMB\nfree %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
+	cons_putstr0(cons, temp);
 	cons_newline(cons);
-	sprintf(temp, "free %dKB", memman_total(memman) / 1024);
-	putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, temp, 30);
-	cons_newline(cons);
-	cons_newline(cons);
+//	sprintf(temp, "free %dKB", memman_total(memman) / 1024);
+//	putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, temp, 30);
+//	cons_newline(cons);
+//	cons_newline(cons);
 	return;
 }
 
-/** 输出一个字符到控制台
+void cons_putstr0(CONSOLE *cons, char *str)
+{
+	for (; *str != 0; str++) {
+		cons_putchar(cons, *str, 1);
+	}
+	return;
+}
+
+void cons_putstr1(CONSOLE *cons, char *str, int len)
+{
+	int i;
+	for (i = 0; i < len; i++) {
+		cons_putchar(cons, str[i], 1);
+	}
+	return;
+}
+
+/**
+ * 这算是个系统功能： 输出一个字符到控制台
  *  move : 是否移动光标
  */
 void cons_putchar(CONSOLE *cons, int chr, char move)
@@ -301,5 +315,23 @@ void cons_newline(CONSOLE *cons)
 		sheet_refresh(cons->sht, 8, 28, 8 + 240, 28 + 128);
 	}
 	cons->cur_x = 8;
+	return;
+}
+
+/**
+ * api
+ */
+void mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
+{
+	CONSOLE *cons = (CONSOLE *) *((int *) 0x0fec);
+	if (edx == 1) {
+		cons_putchar(cons, eax & 0xff, 1);
+	}
+	else if (edx == 2) {
+		cons_putstr0(cons, (char *) ebx);
+	}
+	else if (edx == 3) {
+		cons_putstr1(cons, (char *) ebx, ecx);
+	}
 	return;
 }
