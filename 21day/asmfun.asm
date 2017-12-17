@@ -85,38 +85,13 @@ _asm_inthandler20:
 	PUSH	ES
 	PUSH	DS
 	PUSHAD
-	MOV		AX,SS
-	CMP		AX, 1*8
-	JNE		.from_app	;不相等则是应用程序运行期间发生的中断
-	;当操作系统运行时发生中断(无需改变段，只需保存现场即可)
-	MOV		EAX, ESP
-	PUSH	SS	;保存中断的ss
-	PUSH	EAX	;保存中断的esp
+	MOV		EAX,ESP
+	PUSH	EAX
 	MOV		AX,SS
 	MOV		DS,AX
 	MOV		ES,AX
 	CALL	_inthandler20
-	ADD		ESP,8
-	POPAD
-	POP		DS
-	POP		ES
-	IRETD
-
-  .from_app:	;当运行的是应用程序时发生中断
-	MOV		EAX, 1*8
-	MOV		DS,AX	;暂将DS设为操作系统用
-	MOV		ECX,[0xfe4]	;系统的ESP
-	ADD		ECX,-8
-	MOV		[ECX+4],SS	;保存当前中断的SS,（保存到系统的栈中）
-	MOV		[ECX],ESP	;保存当前中断的ESP,（保存到系统的栈中）
-	MOV		SS,AX
-	MOV		ES,AX
-	MOV		ESP,ECX	;系统的栈
-	CALL	_inthandler20
-	POP		ECX
 	POP		EAX
-	MOV		SS,AX
-	MOV		ESP,ECX
 	POPAD
 	POP		DS
 	POP		ES
@@ -169,66 +144,25 @@ _asm_inthandler2c:
 	POP		DS
 	POP		ES
 	IRETD
-_asm_inthandler0d:	;cpu异常中断
-			STI
-		PUSH	ES
-		PUSH	DS
-		PUSHAD
-		MOV		AX,SS
-		CMP		AX,1*8
-		JNE		.from_app
-;	OSが動いているときに割り込まれたのでほぼ今までどおり，OS运行时产生中断
-		MOV		EAX,ESP
-		PUSH	SS				; 割り込まれたときのSSを保存
-		PUSH	EAX				; 割り込まれたときのESPを保存
-		MOV		AX,SS
-		MOV		DS,AX
-		MOV		ES,AX
-		CALL	_inthandler0d
-		ADD		ESP,8
-		POPAD
-		POP		DS
-		POP		ES
-		ADD		ESP,4			; INT 0x0d では、これが必要
-		IRETD
-.from_app:
-;	アプリが動いているときに割り込まれた，app运行时产生中断
-		CLI
-		MOV		EAX,1*8
-		MOV		DS,AX			; とりあえずDSだけOS用にする
-		MOV		ECX,[0xfe4]		; OSのESP
-		ADD		ECX,-8
-		MOV		[ECX+4],SS		; 割り込まれたときのSSを保存
-		MOV		[ECX  ],ESP		; 割り込まれたときのESPを保存
-		MOV		SS,AX
-		MOV		ES,AX
-		MOV		ESP,ECX
-		STI
-		CALL	_inthandler0d
-		CLI
-		CMP		EAX,0
-		JNE		.kill
-		POP		ECX
-		POP		EAX
-		MOV		SS,AX			; SSをアプリ用に戻す
-		MOV		ESP,ECX			; ESPもアプリ用に戻す
-		POPAD
-		POP		DS
-		POP		ES
-		ADD		ESP,4			; INT 0x0d では、これが必要
-		IRETD
-.kill:
-;	アプリを異常終了させることにした，强制结束应用程序，切换回到startapp
-		MOV		EAX,1*8			; OS用のDS/SS
-		MOV		ES,AX
-		MOV		SS,AX
-		MOV		DS,AX
-		MOV		FS,AX
-		MOV		GS,AX
-		MOV		ESP,[0xfe4]		; start_appのときのESPに無理やり戻す，强制返回到startapp时的esp（强制回到startapp时的状态）
-		STI			; 切り替え完了なので割り込み可能に戻す
-		POPAD	; 保存しておいたレジスタを回復
-		RET
+_asm_inthandler0d:	;cpu一般保护异常中断
+	STI
+	PUSH	ES
+	PUSH	DS
+	PUSHAD
+	MOV		EAX,ESP
+	PUSH	EAX
+	MOV		AX,SS
+	MOV		DS,AX
+	MOV		ES,AX
+	CALL	_inthandler0d
+	CMP		eax, 0
+	JNE		end_app
+	POP		EAX
+	POPAD
+	POP		DS
+	POP		ES
+	add		esp,4
+	IRETD
 _load_cr0:
 	MOV		EAX, CR0
 	RET
@@ -280,104 +214,52 @@ _farjmp:	; void farjump(int eip, int cs)
 	JMP		FAR [ESP+4]
 	RET
 _asm_mwe_api:	;提供给中断0x40用，中断触发的时候会自动CLI
-	;STI		;因为中断机制会自动CLI
-	;PUSHAD
-	;PUSH	1	;参数move
-	;AND 	EAX, 0xff	;参数 chr
-	;PUSH	EAX
-	;PUSH 	DWORD [0x0fec]	;参数cons
-	;CALL	_cons_putchar
-	;ADD		ESP, 12		;丢弃刚才压栈的数据（共4b*3）
-	;RETF			;far-call的返回
-	;POPAD
-	;IRETD	;中断的返回
-	;STI
-	;PUSHAD	;保护call之前的寄存器
-	;PUSHAD	;给_mwe_api的参数
-	;CALL	_mwe_api
-	;ADD		ESP, 32
-	;POPAD
-	;IRETD
+	STI		;因为中断机制会自动CLI
 	PUSH 	DS
 	PUSH	ES
-	PUSHAD
-	MOV		EAX, 1*8
-	MOV 	DS, AX
-	MOV 	ECX, [0xfe4]	;操作系统的栈
-	ADD		ECX, -40
-	MOV		[ECX+32], ESP	;将当前ESP保存到操作系统栈
-	MOV		[ECX+36], SS	;将当前SS保存到操作系统栈
-	;将PUSHAD后的值复制到系统栈
-	MOV		EDX, [ESP]
-	MOV		EBX, [ESP + 4]
-	MOV		[ECX], EDX
-	MOV		[ECX + 4], EBX
-	MOV		EDX, [ESP + 8]
-	MOV 	EBX, [ESP + 12]
-	MOV		[ECX +8], EDX
-	MOV		[ECX +12], EBX
-	MOV		EDX, [ESP+16]
-	MOV		EBX, [ESP+20]
-	MOV		[ECX+16], EDX
-	MOV 	[ECX+20], EBX
-	MOV 	EDX, [ESP+24]
-	MOV		EBX, [ESP+28]
-	MOV		[ECX+24], EDX
-	MOV		[ECX+28], EBX
-
-	MOV		ES,	AX
-	MOV 	SS, AX
-	MOV 	ESP, ECX
-	STI
-
+	PUSHAD	;用于保存
+	PUSHAD	;用于传值
+	MOV		AX,SS
+	MOV		DS,AX
+	MOV		ES,AX
 	CALL	_mwe_api
-
-	MOV 	ECX, [ESP+32]
-	MOV		EAX, [ESP+36]
-	CLI
-	MOV		SS, AX
-	MOV		ESP, ECX
+	CMP		EAX, 0	;当eax不为0时程序结束
+	JNE		end_app
+	ADD		ESP,32
 	POPAD
-	POP 	ES
+	POP		ES
 	POP		DS
-	IRETD	;中断返回，会自动执行STI
+	IRETD
+  end_app:
+    MOV		ESP,[EAX]
+    POPAD
+    RET
 
 _farcall:	;void farcall(int eip, int cs)
 	CALL	FAR [ESP+4];eip, cs
 	RET
 
-_start_app:	;void start_app(int eip, int cs, int esp, int ds);
+_start_app:	;void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 	PUSHAD	;保护操作系统的寄存器
 	MOV		EAX, [ESP+36]	;EIP
 	MOV		ECX, [ESP+40]	;CS
 	MOV		EDX, [ESP+44]	;ESP
 	MOV		EBX, [ESP+48]	;DS/SS
-	MOV		[0xfe4], ESP	;把操作系统的ESP保护起来
-	;设置APP的段寄存器
-	CLI
+	MOV		EBP, [ESP+52]	;tss.esp0的地址
+	MOV   	[EBP], ESP		;把OS的ss放到tss.esp0中
+	MOV   	[EBP+4], SS		;把OS的ss放到tss.ss0中
 	MOV		ES, BX
-	MOV		SS, BX
 	MOV		DS, BX
 	MOV		FS, BX
 	MOV		GS, BX
-	MOV		ESP, EDX
-	STI
-	;准备运行APP
-	PUSH	ECX		;APP的CS，给下面的FARCALL使用
-	PUSH	EAX		;APP的IP
-	CALL	FAR [ESP]	;开始运行APP代码
-	;APP运行结束，返回操作系统
-	MOV		EAX, 1*8
-	CLI
-	MOV		ES, AX
-	MOV		SS, AX
-	MOV		DS, AX
-	MOV		FS, AX
-	MOV		GS, AX
-	MOV		ESP, [0xfe4]
-	STI
-	POPAD	;恢复之前保存的寄存器
-	RET
+
+	OR		ECX, 3
+	OR		EBX, 3
+	PUSH	EBX
+	PUSH	EDX
+	PUSH	ECX
+	PUSH	EAX
+	RETF
 
 
 

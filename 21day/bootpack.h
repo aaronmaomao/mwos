@@ -47,9 +47,9 @@ void farcall(int eip, int cs);	//call有返回
 /** 提供给中断，用来调用系统功能 */
 void asm_mwe_api(void);
 /** 系统功能 */
-void mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
+int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
 /** 启动一个app，并且指定eip, cs段, esp段, ds段 */
-void start_app(int eip, int cs, int esp, int ds);
+void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 
 /* fifo.c */
 typedef struct FIFO32 {
@@ -347,7 +347,7 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdline);
 void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal);
 void cons_putstr0(CONSOLE *cons, char *str);
 void cons_putstr1(CONSOLE *cons, char *str, int len);
-int inthandler0d(int *esp);
+int *inthandler0d(int *esp);
 
 /** file.c */
 /** 软盘文件 */

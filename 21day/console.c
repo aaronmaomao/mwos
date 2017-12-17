@@ -125,6 +125,7 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 	FILEINFO *fileinfo;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 	SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
+	TASK *task = task_now();
 
 	for (i = 0; i < 13; i++) {
 		if (cmdLine[i] <= ' ') {
@@ -147,8 +148,8 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 		q = (char *) memman_alloc_4k(memman, 64 * 1024);
 		*((int *) 0x0fe8) = (int) p;	//把数据段的地址存起来
 		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
-		set_segmdesc(gdt + 1003, fileinfo->size - 1, (int) p, AR_CODE32_ER);	//代码段：注：1003之前的都被用了
-		set_segmdesc(gdt + 1004, 64 * 1024 - 1, (int) q, AR_DATA32_RW);			//数据段
+		set_segmdesc(gdt + 1003, fileinfo->size - 1, (int) p, AR_CODE32_ER + 0x60);	//代码段：注：1003之前的都被用了,0x60意思是这个段是应用程序用
+		set_segmdesc(gdt + 1004, 64 * 1024 - 1, (int) q, AR_DATA32_RW + 0x60);		//数据段
 		if (fileinfo->size >= 8 && strncmp(p + 4, "Hari", 4) == 0) {
 			p[0] = 0xe8;
 			p[1] = 0x16;
@@ -157,7 +158,7 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 			p[4] = 0x00;
 			p[5] = 0xcb;
 		}
-		start_app(0, 1003 * 8, 64 * 1024, 1004 * 8);
+		start_app(0, 1003 * 8, 64 * 1024, 1004 * 8, &(task->tss.esp0));
 		memman_free_4k(memman, (int) p, fileinfo->size);
 		memman_free_4k(memman, (int) q, 64 * 1024);
 		cons_newline(cons);
@@ -175,11 +176,7 @@ void cmd_type(CONSOLE *cons, int *fat, char *cmdLine)
 
 	if (fileinfo != 0) {
 		p = (char *) memman_alloc_4k(memman, fileinfo->size);
-
 		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
-//		for (i = 0; i < fileinfo->size; i++) {
-//			cons_putchar(cons, p[i], 1);
-//		}
 		cons_putstr1(cons, p, fileinfo->size);
 		memman_free_4k(memman, (int) p, fileinfo->size);
 	}
@@ -239,10 +236,6 @@ void cmd_mem(CONSOLE *cons, uint memtotal)
 	sprintf(temp, "total %dMB\nfree %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	cons_putstr0(cons, temp);
 	cons_newline(cons);
-//	sprintf(temp, "free %dKB", memman_total(memman) / 1024);
-//	putfonts8_asc_sht(cons->sht, 8, cons->cur_y, COL8_FFFFFF, COL8_000000, temp, 30);
-//	cons_newline(cons);
-//	cons_newline(cons);
 	return;
 }
 
@@ -334,10 +327,11 @@ void cons_newline(CONSOLE *cons)
 /**
  * api
  */
-void mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
+int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
 {
 	CONSOLE *cons = (CONSOLE *) *((int *) 0x0fec);
 	int cs_base = *((int *) 0x0fe8);	//应用程序加载到内存的绝对地址
+	TASK *task = task_now();
 	if (edx == 1) {
 		cons_putchar(cons, eax & 0xff, 1);
 	}
@@ -347,15 +341,20 @@ void mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	else if (edx == 3) {
 		cons_putstr1(cons, (char *) ebx + cs_base, ecx);
 	}
-	return;
+	else if (edx == 4) {	//结束应用程序的api
+		return &(task->tss.esp0);
+	}
+	return 0;
 }
 
 /**
  * cpu异常的中断
  */
-int inthandler0d(int *esp){
+int *inthandler0d(int *esp)
+{
 	CONSOLE *cons = (CONSOLE *) *((int *) 0x0fec);
+	TASK *task = task_now();
 	cons_putstr0(cons, "\nINT 0D : General Protected Exception.\n");
-	return 1;
+	return &(task->tss.esp0);
 }
 

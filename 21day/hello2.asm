@@ -4,6 +4,7 @@
 	MOV	EDX, 2
 	MOV	EBX, msg
 	INT	0x40
-	RETF
+	mov	edx, 4
+	int	0x40
 msg:	;此时的msg地址是相对地址，在进入内存后要加上base地址才可以读取到
 	DB	"hello world", 0
