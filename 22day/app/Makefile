@@ -22,38 +22,14 @@ makefont = $(toolpath)makefont.exe
 #将字体二进制文件转为可链接的obj文件
 bin2obj = $(toolpath)bin2obj.exe
 
-a_objs = $(objp)a.obj $(objp)a_nask.obj
-hello3_objs = $(objp)hello3.obj $(objp)a_nask.obj
-crack1_objs = $(objp)crack1.obj $(objp)a_nask.obj
+bug1_objs = $(objp)bug1.obj $(objp)a_nask.obj
 
-default: hello.mwe \
-		hello2.mwe \
-		crack2.mwe \
-		a.mwe \
-		hello3.mwe \
-		crack1.mwe
-
-hello.mwe:
-	$(nask) hello.asm hello.mwe
-hello2.mwe:
-	$(nask) hello2.asm hello2.mwe
-crack2.mwe:
-	$(nask) crack2.asm crack2.mwe
+default: bug1.mwe
 	
-a.mwe: $(objp)a.bim Makefile
-	$(bim2hrb) $(objp)a.bim a.mwe 0
-$(objp)a.bim: $(a_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)a.bim map:$(objp)a.map $(a_objs)
-	
-hello3.mwe: $(objp)hello3.bim Makefile
-	$(bim2hrb) $(objp)hello3.bim hello3.mwe 0
-$(objp)hello3.bim: $(hello3_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)hello3.bim map:$(objp)hello3.map $(hello3_objs)
-	
-crack1.mwe: $(objp)crack1.bim Makefile
-	$(bim2hrb) $(objp)crack1.bim crack1.mwe 0
-$(objp)crack1.bim: $(crack1_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)crack1.bim map:$(objp)crack1.map $(crack1_objs)
+bug1.mwe: $(objp)bug1.bim Makefile
+	$(bim2hrb) $(objp)bug1.bim bug1.mwe 0
+$(objp)bug1.bim: $(bug1_objs) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)bug1.bim map:$(objp)bug1.map $(bug1_objs)
 	
 $(objp)a_nask.obj: a_nask.asm Makefile
 	$(nask) a_nask.asm $(objp)a_nask.obj $(objp)a_nask.lst

@@ -9,12 +9,12 @@
 	GLOBAL	_io_out8, _io_out16, _io_out32
 	GLOBAL	_io_load_eflags, _io_store_eflags
 	GLOBAL	_load_gdtr, _load_idtr
-	GLOBAL	_asm_inthandler20, _asm_inthandler21, _asm_inthandler27, _asm_inthandler2c
+	GLOBAL	_asm_inthandler20, _asm_inthandler21, _asm_inthandler27, _asm_inthandler2c, _asm_inthandler0c
 	GLOBAL	_load_cr0, _store_cr0
 	GLOBAL	_memtest_sub
 	GLOBAL	_load_tr, _taskswitch3, _taskswitch4, _farjmp
 	GLOBAL	_asm_mwe_api, _farcall, _start_app, _asm_inthandler0d
-	EXTERN	_inthandler20, _inthandler21, _inthandler27, _inthandler2c, _inthandler0d
+	EXTERN	_inthandler20, _inthandler21, _inthandler27, _inthandler2c, _inthandler0d, _inthandler0c
 	EXTERN 	_mwe_api
 ;实际函数
 [section .text]
@@ -163,6 +163,26 @@ _asm_inthandler0d:	;cpu一般保护异常中断
 	POP		ES
 	add		esp,4
 	IRETD
+_asm_inthandler0c:	;cpu 栈异常
+	STI
+	PUSH	ES
+	PUSH	DS
+	PUSHAD
+	MOV		EAX,ESP
+	PUSH	EAX
+	MOV		AX,SS
+	MOV		DS,AX
+	MOV		ES,AX
+	CALL	_inthandler0c
+	CMP		eax, 0
+	JNE		end_app
+	POP		EAX
+	POPAD
+	POP		DS
+	POP		ES
+	add		esp,4
+	IRETD
+
 _load_cr0:
 	MOV		EAX, CR0
 	RET
