@@ -214,12 +214,12 @@ _farjmp:	; void farjump(int eip, int cs)
 	JMP		FAR [ESP+4]
 	RET
 _asm_mwe_api:	;提供给中断0x40用，中断触发的时候会自动CLI
-	STI		;因为中断机制会自动CLI
-	PUSH 	DS
+	STI			;因为中断机制会自动CLI
+	PUSH 	DS	
 	PUSH	ES
-	PUSHAD	;用于保存
-	PUSHAD	;用于传值
-	MOV		AX,SS
+	PUSHAD			;用于保存
+	PUSHAD			;用于传值
+	MOV		AX,SS	;此时的SS应该是对应app的SS
 	MOV		DS,AX
 	MOV		ES,AX
 	CALL	_mwe_api
@@ -246,7 +246,7 @@ _start_app:	;void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 	MOV		EDX, [ESP+44]	;ESP
 	MOV		EBX, [ESP+48]	;DS/SS
 	MOV		EBP, [ESP+52]	;tss.esp0的地址
-	MOV   	[EBP], ESP		;把OS的ss放到tss.esp0中
+	MOV   	[EBP], ESP		;把OS的esp放到tss.esp0中
 	MOV   	[EBP+4], SS		;把OS的ss放到tss.ss0中
 	MOV		ES, BX
 	MOV		DS, BX
@@ -259,7 +259,7 @@ _start_app:	;void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 	PUSH	EDX
 	PUSH	ECX
 	PUSH	EAX
-	RETF
+	RETF		;利用了该指令的特点
 
 
 

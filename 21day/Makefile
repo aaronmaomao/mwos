@@ -18,10 +18,6 @@ bootobjs = $(objp)bootpack.obj \
 		   $(objp)mtask.obj \
 		   $(objp)console.obj \
 		   $(objp)file.obj
-
-a_objs = $(objp)a.obj $(objp)a_nask.obj
-hello3_objs = $(objp)hello3.obj $(objp)a_nask.obj
-crack1_objs = $(objp)crack1.obj $(objp)a_nask.obj
 		   
 make = $(toolpath)make.exe -r
 #制作img镜像
@@ -44,22 +40,23 @@ makefont = $(toolpath)makefont.exe
 bin2obj = $(toolpath)bin2obj.exe
 
 default:
+	$(make) -C ./app/
 	$(make) img
 
 img: 
 	$(make) mwos.img
 
-mwos.img: ipl10.bin os.sys hello.mwe hello2.mwe hello3.mwe a.mwe crack1.mwe crack2.mwe Makefile
+mwos.img: ipl10.bin os.sys Makefile
 	$(edimg) imgin:$(toolpath)fdimg0at.tek wbinimg src:$(objp)ipl10.bin len:512 from:0 to:0 \
 	copy from:$(objp)os.sys to:@: \
 	copy from:ipl10.asm to:@: \
 	copy from:Makefile to:@: \
-	copy from:hello2.mwe to:@: \
-	copy from:hello.mwe to:@: \
-	copy from:hello3.mwe to:@: \
-	copy from:a.mwe to:@: \
-	copy from:crack1.mwe to:@: \
-	copy from:crack2.mwe to:@: \
+	copy from:./app/hello2.mwe to:@: \
+	copy from:./app/hello.mwe to:@: \
+	copy from:./app/hello3.mwe to:@: \
+	copy from:./app/a.mwe to:@: \
+	copy from:./app/crack1.mwe to:@: \
+	copy from:./app/crack2.mwe to:@: \
 	imgout:../mwos.img
 
 ipl10.bin: ipl10.asm Makefile
@@ -87,30 +84,6 @@ $(objp)$(font).obj: $(font).font Makefile
 	
 #####应用程序相关的编译
 
-hello.mwe:
-	$(nask) hello.asm hello.mwe
-hello2.mwe:
-	$(nask) hello2.asm hello2.mwe
-crack2.mwe:
-	$(nask) crack2.asm crack2.mwe
-	
-a.mwe: $(objp)a.bim Makefile
-	$(bim2hrb) $(objp)a.bim a.mwe 0
-$(objp)a.bim: $(a_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)a.bim map:$(objp)a.map $(a_objs)
-	
-hello3.mwe: $(objp)hello3.bim Makefile
-	$(bim2hrb) $(objp)hello3.bim hello3.mwe 0
-$(objp)hello3.bim: $(hello3_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)hello3.bim map:$(objp)hello3.map $(hello3_objs)
-	
-crack1.mwe: $(objp)crack1.bim Makefile
-	$(bim2hrb) $(objp)crack1.bim crack1.mwe 0
-$(objp)crack1.bim: $(crack1_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)crack1.bim map:$(objp)crack1.map $(crack1_objs)
-	
-$(objp)a_nask.obj: a_nask.asm Makefile
-	$(nask) a_nask.asm $(objp)a_nask.obj $(objp)a_nask.lst
 	
 #####################
 
@@ -144,15 +117,13 @@ clean:
 	del /Q .\obj\*.map
 	del /Q .\obj\*.bin
 	del /Q .\obj\*.sys
+	$(make) -C ./app/ clean
 	
 a1:
-	del /Q .\obj\*.mwe
-	del /Q .\*.mwe
+	$(make) -C ./app/ clean
 	$(make) default
 	$(make) run1
 a2:
-	del /Q .\obj\*.mwe
-	del /Q .\*.mwe
-	$(make) clean
+	$(make) -C ./app/ clean
 	$(make) default
 	$(make) run2
