@@ -25,8 +25,9 @@ bin2obj = $(toolpath)bin2obj.exe
 bug1_objs = $(objp)bug1.obj $(objp)a_nask.obj
 bug2_objs = $(objp)bug2.obj $(objp)a_nask.obj
 bug3_objs = $(objp)bug3.obj $(objp)a_nask.obj
+hello4_objs = $(objp)hello4.obj $(objp)a_nask.obj
 
-default: bug1.mwe bug2.mwe bug3.mwe
+default: bug1.mwe bug2.mwe bug3.mwe hello4.mwe
 	
 bug1.mwe: $(objp)bug1.bim Makefile
 	$(bim2hrb) $(objp)bug1.bim bug1.mwe 0
@@ -42,6 +43,11 @@ bug3.mwe: $(objp)bug3.bim Makefile
 	$(bim2hrb) $(objp)bug3.bim bug3.mwe 0
 $(objp)bug3.bim: $(bug3_objs) Makefile
 	$(obj2bim) @$(rulefile) out:$(objp)bug3.bim map:$(objp)bug3.map $(bug3_objs)
+
+hello4.mwe: $(objp)hello4.bim Makefile
+	$(bim2hrb) $(objp)hello4.bim hello4.mwe 0
+$(objp)hello4.bim: $(hello4_objs) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)hello4.bim map:$(objp)hello4.map $(hello4_objs)	
 	
 $(objp)a_nask.obj: a_nask.asm Makefile
 	$(nask) a_nask.asm $(objp)a_nask.obj $(objp)a_nask.lst
