@@ -23,13 +23,25 @@ makefont = $(toolpath)makefont.exe
 bin2obj = $(toolpath)bin2obj.exe
 
 bug1_objs = $(objp)bug1.obj $(objp)a_nask.obj
+bug2_objs = $(objp)bug2.obj $(objp)a_nask.obj
+bug3_objs = $(objp)bug3.obj $(objp)a_nask.obj
 
-default: bug1.mwe
+default: bug1.mwe bug2.mwe bug3.mwe
 	
 bug1.mwe: $(objp)bug1.bim Makefile
 	$(bim2hrb) $(objp)bug1.bim bug1.mwe 0
 $(objp)bug1.bim: $(bug1_objs) Makefile
 	$(obj2bim) @$(rulefile) out:$(objp)bug1.bim map:$(objp)bug1.map $(bug1_objs)
+
+bug2.mwe: $(objp)bug2.bim Makefile
+	$(bim2hrb) $(objp)bug2.bim bug2.mwe 0
+$(objp)bug2.bim: $(bug2_objs) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)bug2.bim map:$(objp)bug2.map $(bug2_objs)
+
+bug3.mwe: $(objp)bug3.bim Makefile
+	$(bim2hrb) $(objp)bug3.bim bug3.mwe 0
+$(objp)bug3.bim: $(bug3_objs) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)bug3.bim map:$(objp)bug3.map $(bug3_objs)
 	
 $(objp)a_nask.obj: a_nask.asm Makefile
 	$(nask) a_nask.asm $(objp)a_nask.obj $(objp)a_nask.lst

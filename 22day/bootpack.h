@@ -51,6 +51,7 @@ void asm_mwe_api(void);
 int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax);
 /** 启动一个app，并且指定eip, cs段, esp段, ds段 */
 void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
+void asm_end_app(void);
 
 /* fifo.c */
 typedef struct FIFO32 {
