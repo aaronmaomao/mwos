@@ -121,7 +121,7 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 {
 	char *p, *q;
 	char name[18];
-	int i;
+	int i, segsize, datsize, esp, dathrb;
 	FILEINFO *fileinfo;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 	SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
@@ -145,26 +145,27 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 	}
 	if (fileinfo != 0) {
 		p = (char *) memman_alloc_4k(memman, fileinfo->size);
-		q = (char *) memman_alloc_4k(memman, 64 * 1024);
-		*((int *) 0x0fe8) = (int) p;	//把数据段的地址存起来
 		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
-		set_segmdesc(gdt + 1003, fileinfo->size - 1, (int) p, AR_CODE32_ER + 0x60);	//代码段：注：1003之前的都被用了,0x60意思是这个段是应用程序用
-		set_segmdesc(gdt + 1004, 64 * 1024 - 1, (int) q, AR_DATA32_RW + 0x60);		//数据段
-		if (fileinfo->size >= 8 && strncmp(p + 4, "Hari", 4) == 0) {
-//			p[0] = 0xe8;
-//			p[1] = 0x16;
-//			p[2] = 0x00;
-//			p[3] = 0x00;
-//			p[4] = 0x00;
-//			p[5] = 0xcb;
-			start_app(0x1b, 1003 * 8, 64 * 1024, 1004 * 8, &(task->tss.esp0));
+		if (fileinfo->size >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0) {
+			segsize = *((int *) (p + 0x0000));	//数据段大小
+			esp = *((int *) (p + 0x000c));	//esp寄存器的初始值
+			datsize = *((int *) (p + 0x0010));	//向数据段传送的部分的字节数（即“helloworld”的大小）
+			dathrb = *((int *) (p + 0x0014));	//向数据段传送的的部分在hrb中的位置（即“helloworld”的偏移地址）
+			q = (char *) memman_alloc_4k(memman, segsize);
+			*((int *) 0x0fe8) = (int) q;	//把数据段的地址存起来
+			set_segmdesc(gdt + 1003, fileinfo->size - 1, (int) p, AR_CODE32_ER + 0x60);	//代码段：注：1003之前的都被用了,0x60意思是这个段是应用程序用
+			set_segmdesc(gdt + 1004, segsize - 1, (int) q, AR_DATA32_RW + 0x60);		//数据段
+			for (i = 0; i < datsize; i++) {
+				q[esp + i] = p[dathrb + i];
+			}
+			start_app(0x1b, 1003 * 8, esp, 1004 * 8, &(task->tss.esp0));
+			memman_free_4k(memman, (int) q, segsize);
 		}
-		else{
-			start_app(0, 1003 * 8, 64 * 1024, 1004 * 8, &(task->tss.esp0));
+		else {
+			cons_putstr0(cons,"This is not an Executable file");
 		}
 
 		memman_free_4k(memman, (int) p, fileinfo->size);
-		memman_free_4k(memman, (int) q, 64 * 1024);
 		cons_newline(cons);
 		return 1;
 	}

@@ -47,7 +47,7 @@ $(objp)bug3.bim: $(bug3_objs) Makefile
 hello4.mwe: $(objp)hello4.bim Makefile
 	$(bim2hrb) $(objp)hello4.bim hello4.mwe 0
 $(objp)hello4.bim: $(hello4_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)hello4.bim map:$(objp)hello4.map $(hello4_objs)	
+	$(obj2bim) @$(rulefile) out:$(objp)hello4.bim stack:1k map:$(objp)hello4.map $(hello4_objs)	
 	
 $(objp)a_nask.obj: a_nask.asm Makefile
 	$(nask) a_nask.asm $(objp)a_nask.obj $(objp)a_nask.lst
