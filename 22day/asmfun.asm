@@ -239,7 +239,7 @@ _asm_mwe_api:	;提供给中断0x40用，中断触发的时候会自动CLI
 	PUSH	ES
 	PUSHAD			;用于保存
 	PUSHAD			;用于传值
-	MOV		AX,SS	;此时的SS应该是对应app的SS
+	MOV		AX,SS	;此时的SS应该是app的SS (中断只改变cs和eip)
 	MOV		DS,AX
 	MOV		ES,AX
 	CALL	_mwe_api

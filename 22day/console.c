@@ -335,16 +335,16 @@ void cons_newline(CONSOLE *cons)
 int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
 {
 	CONSOLE *cons = (CONSOLE *) *((int *) 0x0fec);
-	int cs_base = *((int *) 0x0fe8);	//应用程序加载到内存的绝对地址
+	int ds_base = *((int *) 0x0fe8);	//应用程序的数据段
 	TASK *task = task_now();
 	if (edx == 1) {
 		cons_putchar(cons, eax & 0xff, 1);
 	}
 	else if (edx == 2) {
-		cons_putstr0(cons, (char *) ebx + cs_base);
+		cons_putstr0(cons, (char *) ebx + ds_base);
 	}
 	else if (edx == 3) {
-		cons_putstr1(cons, (char *) ebx + cs_base, ecx);
+		cons_putstr1(cons, (char *) ebx + ds_base, ecx);
 	}
 	else if (edx == 4) {	//结束应用程序的api
 		return &(task->tss.esp0);
