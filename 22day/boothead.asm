@@ -118,7 +118,7 @@ waitkbdout:
 		JNZ		waitkbdout		; ANDの結果が0でなければwaitkbdoutへ
 		RET
 
-memcpy:
+memcpy:	;将软盘内容复制到内存
 		MOV		EAX,[ESI]
 		ADD		ESI,4
 		MOV		[EDI],EAX
