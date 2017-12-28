@@ -59,7 +59,7 @@ mov	[LEDS],	al
 		AND		EAX,0x7fffffff	; bit31を0にする（ページング禁止のため）
 		OR		EAX,0x00000001	; bit0を1にする（プロテクトモード移行のため）
 		MOV		CR0,EAX
-		JMP		pipelineflush
+		JMP		pipelineflush	;在设置了PE位以后，初始代码要立即执行一条JMP指令，以刷新处理器预取指令队列。80386会在使用前预取、解码指令和地址。但是，当切换到保护模式时，预取的指令将不再有效（属于实模式的）。JMP指令将会使处理器罢弃无效的信息。
 pipelineflush:	;设置可读写的段
 		MOV		AX,1*8			;  読み書き可能セグメント32bit
 		MOV		DS,AX

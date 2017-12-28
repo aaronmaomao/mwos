@@ -16,21 +16,21 @@ void console_task(SHEET *sht, uint memtotal)
 	char cmdLine[30];
 	CONSOLE cons;
 	int dat, fifobuf[128];
-	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
-	int *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
+	int *fat = (int *)memman_alloc_4k(memman, 4 * 2880);
 
 	cons.cur_x = 8;
 	cons.cur_y = 28;
 	cons.cur_c = -1;
 	cons.sht = sht;
-	*((int *) 0x0fec) = (int) &cons;
+	*((int *)0x0fec) = (int)&cons;
 
 	fifo32_init(&task->fifo, 128, fifobuf, task);
 	cursor_timer = timer_alloc();
 	timer_init(cursor_timer, &task->fifo, 1);
 	timer_settime(cursor_timer, 50);
 
-	file_readfat(fat, (uchar *) (ADR_DISKIMG + 0x000200));
+	file_readfat(fat, (uchar *)(ADR_DISKIMG + 0x000200));
 	cons_putchar(&cons, '>', 1);
 
 	for (;;) {
@@ -65,7 +65,7 @@ void console_task(SHEET *sht, uint memtotal)
 				cons.cur_c = -1;
 			}
 			if (256 <= dat && dat <= 511) {	//键盘数据
-				if (dat == 8 + 256) {	//退格键
+				if (dat == 8 + 256) {	//退格键                                                                                                                                                                                                                            
 					if (cons.cur_x > 16) {
 						cons_putchar(&cons, ' ', 0);
 						cons.cur_x -= 8;
@@ -123,8 +123,8 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 	char name[18];
 	int i, segsize, datsize, esp, dathrb;
 	FILEINFO *fileinfo;
-	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
-	SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
+	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
+	SEGMENT_DESC *gdt = (SEGMENT_DESC *)ADR_GDT;
 	TASK *task = task_now();
 
 	for (i = 0; i < 13; i++) {
@@ -134,38 +134,38 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 		name[i] = cmdLine[i];
 	}
 	name[i] = 0;
-	fileinfo = file_search(name, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224); //不加后缀名查找
+	fileinfo = file_search(name, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224); //不加后缀名查找
 	if (fileinfo == 0 && name[i - 1] != '.') {
 		name[i] = '.';
 		name[i + 1] = 'M';
 		name[i + 2] = 'W';
 		name[i + 3] = 'E';
 		name[i + 4] = 0;
-		fileinfo = file_search(name, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);  //加上后缀名重新查找
+		fileinfo = file_search(name, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);  //加上后缀名重新查找
 	}
 	if (fileinfo != 0) {
-		p = (char *) memman_alloc_4k(memman, fileinfo->size);
-		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
+		p = (char *)memman_alloc_4k(memman, fileinfo->size);
+		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *)(ADR_DISKIMG + 0x003e00));
 		if (fileinfo->size >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0) {
-			segsize = *((int *) (p + 0x0000));	//数据段大小
-			esp = *((int *) (p + 0x000c));	//esp寄存器的初始值
-			datsize = *((int *) (p + 0x0010));	//向数据段传送的部分的字节数（即“helloworld”的大小）
-			dathrb = *((int *) (p + 0x0014));	//向数据段传送的的部分在hrb中的位置（即“helloworld”的偏移地址）
-			q = (char *) memman_alloc_4k(memman, segsize);
-			*((int *) 0x0fe8) = (int) q;	//把数据段的地址存起来
-			set_segmdesc(gdt + 1003, fileinfo->size - 1, (int) p, AR_CODE32_ER + 0x60);	//代码段：注：1003之前的都被用了,0x60意思是这个段是应用程序用
-			set_segmdesc(gdt + 1004, segsize - 1, (int) q, AR_DATA32_RW + 0x60);		//数据段
+			segsize = *((int *)(p + 0x0000));	//数据段大小
+			esp = *((int *)(p + 0x000c));	//esp寄存器的初始值
+			datsize = *((int *)(p + 0x0010));	//向数据段传送的部分的字节数（即“helloworld”的大小）
+			dathrb = *((int *)(p + 0x0014));	//向数据段传送的的部分在hrb中的位置（即“helloworld”的偏移地址）
+			q = (char *)memman_alloc_4k(memman, segsize);
+			*((int *)0x0fe8) = (int)q;	//把数据段的地址存起来
+			set_segmdesc(gdt + 1003, fileinfo->size - 1, (int)p, AR_CODE32_ER + 0x60);	//代码段：注：1003之前的都被用了,0x60意思是这个段是应用程序用
+			set_segmdesc(gdt + 1004, segsize - 1, (int)q, AR_DATA32_RW + 0x60);		//数据段
 			for (i = 0; i < datsize; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
 			start_app(0x1b, 1003 * 8, esp, 1004 * 8, &(task->tss.esp0));
-			memman_free_4k(memman, (int) q, segsize);
+			memman_free_4k(memman, (int)q, segsize);
 		}
 		else {
-			cons_putstr0(cons,"This is not an Executable file");
+			cons_putstr0(cons, "This is not an Executable file");
 		}
 
-		memman_free_4k(memman, (int) p, fileinfo->size);
+		memman_free_4k(memman, (int)p, fileinfo->size);
 		cons_newline(cons);
 		return 1;
 	}
@@ -176,14 +176,14 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 void cmd_type(CONSOLE *cons, int *fat, char *cmdLine)
 {
 	char *p;
-	FILEINFO *fileinfo = file_search(cmdLine + 5, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
-	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	FILEINFO *fileinfo = file_search(cmdLine + 5, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);
+	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
 
 	if (fileinfo != 0) {
-		p = (char *) memman_alloc_4k(memman, fileinfo->size);
-		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
+		p = (char *)memman_alloc_4k(memman, fileinfo->size);
+		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *)(ADR_DISKIMG + 0x003e00));
 		cons_putstr1(cons, p, fileinfo->size);
-		memman_free_4k(memman, (int) p, fileinfo->size);
+		memman_free_4k(memman, (int)p, fileinfo->size);
 	}
 	else {	//没找到
 		cons_putstr0(cons, "File not found.\n");
@@ -197,7 +197,7 @@ void cmd_dir(CONSOLE *cons)
 {
 	int i, j;
 	char temp[30];
-	FILEINFO *fileinfo = (FILEINFO *) (ADR_DISKIMG + 0x002600);
+	FILEINFO *fileinfo = (FILEINFO *)(ADR_DISKIMG + 0x002600);
 	for (i = 0; i < 224; i++) {
 		if (fileinfo[i].name[0] == 0x00) {	//0x00表示啥也没有
 			break;
@@ -237,7 +237,7 @@ void cmd_cls(CONSOLE *cons)
 void cmd_mem(CONSOLE *cons, uint memtotal)
 {
 	char temp[60];
-	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
 	sprintf(temp, "total %dMB\nfree %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	cons_putstr0(cons, temp);
 	cons_newline(cons);
@@ -334,20 +334,31 @@ void cons_newline(CONSOLE *cons)
  */
 int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
 {
-	CONSOLE *cons = (CONSOLE *) *((int *) 0x0fec);
-	int ds_base = *((int *) 0x0fe8);	//应用程序的数据段
+	CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
+	int ds_base = *((int *)0x0fe8);	//应用程序的数据段
 	TASK *task = task_now();
+	SHEETCTL *shtctl = (SHEETCTL *)((int *)0x0fe4);
+	SHEET *sht;
+	int *reg = &eax + 1;
 	if (edx == 1) {
 		cons_putchar(cons, eax & 0xff, 1);
 	}
 	else if (edx == 2) {
-		cons_putstr0(cons, (char *) ebx + ds_base);
+		cons_putstr0(cons, (char *)ebx + ds_base);
 	}
 	else if (edx == 3) {
-		cons_putstr1(cons, (char *) ebx + ds_base, ecx);
+		cons_putstr1(cons, (char *)ebx + ds_base, ecx);
 	}
 	else if (edx == 4) {	//结束应用程序的api
 		return &(task->tss.esp0);
+	}
+	else if (edx == 5) {
+		sht = sheet_alloc(shtctl);
+		sheet_setbuf(sht, ds_base + (char *)ebx, esi, edi, eax);
+		make_window8(ds_base + (char *)ebx, esi, edi, ecx + ds_base, 0);
+		sheet_slide(sht, 100, 50);
+		sheet_updown(sht, 3);
+		reg[7] = (int)sht;
 	}
 	return 0;
 }
@@ -357,7 +368,7 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
  */
 int *inthandler0d(int *esp)
 {
-	CONSOLE *cons = (CONSOLE *) *((int *) 0x0fec);
+	CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
 	TASK *task = task_now();
 	cons_putstr0(cons, "\nINT 0D : General Protected Exception.\n");
 	return &(task->tss.esp0);
@@ -368,7 +379,7 @@ int *inthandler0d(int *esp)
  */
 int *inthandler0c(int *esp)
 {
-	CONSOLE *cons = (CONSOLE *) *((int *) 0x0fec);
+	CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
 	char temp[30];
 	TASK *task = task_now();
 	cons_putstr0(cons, "\nINT 0D : Stack Exception.\n");

@@ -23,6 +23,14 @@ _api_putstr0:	;void api_putstr0(char *str)
 	POP		EBX
 	RET
 
+_api_openwin:	;void api_putstr0(char *str)
+	PUSH	EBX
+	MOV		EDX,	2
+	MOV		EBX,	[ESP+8]
+	INT		0x40
+	POP		EBX
+	RET
+
 _api_end:
 	MOV		edx, 4
 	INT		0x40
