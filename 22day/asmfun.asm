@@ -233,13 +233,13 @@ _taskswitch4:
 _farjmp:	; void farjump(int eip, int cs)
 	JMP		FAR [ESP+4]
 	RET
-_asm_mwe_api:	;提供给中断0x40用，中断触发的时候会自动CLI
+_asm_mwe_api:	;提供给中断0x40用，中断触发的时候会自动CLI（！！！中断只运行在ring0中，如果当前为用户态，则会涉及栈切换）
 	STI			;因为中断机制会自动CLI
 	PUSH 	DS	
 	PUSH	ES
 	PUSHAD			;用于保存
 	PUSHAD			;用于传值
-	MOV		AX,SS	;此时的SS应该是app的SS (中断只改变cs和eip)
+	MOV		AX,SS	;ss肯定是内核栈
 	MOV		DS,AX
 	MOV		ES,AX
 	CALL	_mwe_api
@@ -252,7 +252,7 @@ _asm_mwe_api:	;提供给中断0x40用，中断触发的时候会自动CLI
 	IRETD
   end_app:
     MOV		ESP,[EAX]
-    POPAD
+    POPAD	;弹出的是start_app保存的操作系统寄存器
     RET
 
 _asm_end_app:
@@ -281,11 +281,11 @@ _start_app:	;void start_app(int eip, int cs, int esp, int ds, int *tss_esp0);
 
 	OR		ECX, 3
 	OR		EBX, 3
-	PUSH	EBX		;应用程序的ss
+	PUSH	EBX		;应用程序的ss（！！！http://blog.csdn.net/bfboys/article/details/52420211）
 	PUSH	EDX		;应用程序的esp
 	PUSH	ECX		;应用程序的cs
 	PUSH	EAX		;应用程序的eip
-	RETF		;利用了该指令的特点
+	RETF		;利用了该指令的特点（！！！这里执行 由低特权级到高特权级的调用返回）
 
 
 

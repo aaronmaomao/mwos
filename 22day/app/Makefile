@@ -26,8 +26,9 @@ bug1_objs = $(objp)bug1.obj $(objp)a_nask.obj
 bug2_objs = $(objp)bug2.obj $(objp)a_nask.obj
 bug3_objs = $(objp)bug3.obj $(objp)a_nask.obj
 hello4_objs = $(objp)hello4.obj $(objp)a_nask.obj
+winhello_objs = $(objp)winhello.obj $(objp)a_nask.obj
 
-default: bug1.mwe bug2.mwe bug3.mwe hello4.mwe
+default: bug1.mwe bug2.mwe bug3.mwe hello4.mwe winhello.mwe
 	
 bug1.mwe: $(objp)bug1.bim Makefile
 	$(bim2hrb) $(objp)bug1.bim bug1.mwe 0
@@ -48,6 +49,11 @@ hello4.mwe: $(objp)hello4.bim Makefile
 	$(bim2hrb) $(objp)hello4.bim hello4.mwe 0
 $(objp)hello4.bim: $(hello4_objs) Makefile
 	$(obj2bim) @$(rulefile) out:$(objp)hello4.bim stack:1k map:$(objp)hello4.map $(hello4_objs)	
+
+winhello.mwe: $(objp)winhello.bim Makefile
+	$(bim2hrb) $(objp)winhello.bim winhello.mwe 0
+$(objp)winhello.bim: $(winhello_objs) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)winhello.bim stack:1k map:$(objp)winhello.map $(winhello_objs)	
 	
 $(objp)a_nask.obj: a_nask.asm Makefile
 	$(nask) a_nask.asm $(objp)a_nask.obj $(objp)a_nask.lst

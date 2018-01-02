@@ -148,7 +148,7 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *)(ADR_DISKIMG + 0x003e00));
 		if (fileinfo->size >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0) {
 			segsize = *((int *)(p + 0x0000));	//数据段大小
-			esp = *((int *)(p + 0x000c));	//esp寄存器的初始值
+			esp = *((int *)(p + 0x000c));	//esp寄存器的初始值()
 			datsize = *((int *)(p + 0x0010));	//向数据段传送的部分的字节数（即“helloworld”的大小）
 			dathrb = *((int *)(p + 0x0014));	//向数据段传送的的部分在hrb中的位置（即“helloworld”的偏移地址）
 			q = (char *)memman_alloc_4k(memman, segsize);
@@ -337,7 +337,7 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
 	int ds_base = *((int *)0x0fe8);	//应用程序的数据段
 	TASK *task = task_now();
-	SHEETCTL *shtctl = (SHEETCTL *)((int *)0x0fe4);
+	SHEETCTL *shtctl = (SHEETCTL *) *((int *)0x0fe4);
 	SHEET *sht;
 	int *reg = &eax + 1;
 	if (edx == 1) {
@@ -354,11 +354,21 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	}
 	else if (edx == 5) {
 		sht = sheet_alloc(shtctl);
-		sheet_setbuf(sht, ds_base + (char *)ebx, esi, edi, eax);
-		make_window8(ds_base + (char *)ebx, esi, edi, ecx + ds_base, 0);
+		sheet_setbuf(sht, (char *)ebx + ds_base, esi, edi, eax);
+		make_window8((char *)ebx + ds_base, esi, edi, (char *)ecx + ds_base, 0);
 		sheet_slide(sht, 100, 50);
 		sheet_updown(sht, 3);
 		reg[7] = (int)sht;
+	}
+	else if (edx == 6) {
+		sht = (SHEET *)ebx;
+		putfonts8_asc(sht->buf, sht->xsize, esi, edi, eax, (char *)ebp + ds_base);
+		sheet_refresh(sht, esi, edi, esi + ecx * 8, edi + 16);
+	}
+	else if (edx == 7) {
+		sht = (SHEET *)ebx;
+		boxfill8(sht->buf, sht->xsize, ebp, eax, ecx, esi, edi);
+		sheet_refresh(sht, eax, ecx, esi + 1, edi + 1);
 	}
 	return 0;
 }
