@@ -59,7 +59,7 @@ void HariMain(void)
 	task_m = task_init(memman);
 	fifo_a.task = task_m;	//设置任务的fifo
 	task_run(task_m, 1, 2);
-	*((int *)0x0fe4) = shtctl;
+	*((int *)0x0fe4) = (int *)shtctl;
 	//init screen
 	sht_back = sheet_alloc(shtctl);
 	buf_back = (uchar *)memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);

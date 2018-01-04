@@ -147,7 +147,7 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 		p = (char *)memman_alloc_4k(memman, fileinfo->size);
 		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *)(ADR_DISKIMG + 0x003e00));
 		if (fileinfo->size >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0) {
-			segsize = *((int *)(p + 0x0000));	//数据段大小
+			segsize = *((int *)(p + 0x0000));	//数据区（包括ss和ds）大小
 			esp = *((int *)(p + 0x000c));	//esp寄存器的初始值()
 			datsize = *((int *)(p + 0x0010));	//向数据段传送的部分的字节数（即“helloworld”的大小）
 			dathrb = *((int *)(p + 0x0014));	//向数据段传送的的部分在hrb中的位置（即“helloworld”的偏移地址）
@@ -361,16 +361,53 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		reg[7] = (int)sht;
 	}
 	else if (edx == 6) {
-		sht = (SHEET *)ebx;
+		sht = (SHEET *)(ebx & 0xfffffffe);
 		putfonts8_asc(sht->buf, sht->xsize, esi, edi, eax, (char *)ebp + ds_base);
-		sheet_refresh(sht, esi, edi, esi + ecx * 8, edi + 16);
+		if ((ebx & 1) == 0) {  //偶地址即为真实的地址
+			sheet_refresh(sht, esi, edi, esi + ecx * 8, edi + 16);
+		}
 	}
 	else if (edx == 7) {
-		sht = (SHEET *)ebx;
+		sht = (SHEET *)(ebx & 0xfffffffe);
 		boxfill8(sht->buf, sht->xsize, ebp, eax, ecx, esi, edi);
-		sheet_refresh(sht, eax, ecx, esi + 1, edi + 1);
+		if ((ebx & 1) == 0) {
+			sheet_refresh(sht, eax, ecx, esi + 1, edi + 1);
+		}
+	}
+	else if (edx == 8) {  //初始化应用程序的memman
+		memman_init((MEMMAN *)(ebx + ds_base));
+		ecx &= 0xfffffff0;  //以16字节取整
+		memman_free((MEMMAN *)(ebx + ds_base), eax, ecx);
+	}
+	else if (edx == 9) {  //应用程序的malloc
+		ecx = (ecx + 0x0f) & 0xfffffffe;
+		reg[7] = memman_alloc((MEMMAN *)(ebx + ds_base), ecx);
+	}
+	else if (edx == 10) {  //应用程序的free
+		ecx = (ecx + 0x0f) & 0xfffffff0;
+		memman_free((MEMMAN *)(ebx + ds_base), eax, ecx);
+	}
+	else if (edx == 11) {  //在窗口上画点
+		sht = (SHEET *)(ebx & 0xfffffffe);
+		sht->buf[sht->xsize*edi + esi] = eax;
+		if ((ebx & 1) == 0) {
+			sheet_refresh(sht, esi, edi, esi + 1, edi + 1);
+		}
+	}
+	else if (edx == 12) //刷新图层
+	{
+		sht = (SHEET *)ebx;
+		sheet_refresh(sht, eax, ecx, esi, edi);
+	}
+	else if (edx == 13) {  //画直线
+		sht = (SHEET *)(ebx & 0xfffffffe);
 	}
 	return 0;
+}
+
+/* 在win上画直线 */
+void mw_api_linewin(SHEET *sht, int x0, int y0, int x1, int y1) {
+
 }
 
 /**

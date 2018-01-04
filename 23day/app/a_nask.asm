@@ -4,7 +4,8 @@
 [BITS 32]		;制作32位模式的机器语言
 [FILE "a_nask.asm"]	;制作目标文件信息
 
-	GLOBAL	_api_putchar, _api_putstr0, _api_openwin, _api_putstrwin, _api_boxfillwin
+	GLOBAL	_api_putchar, _api_putstr0, _api_openwin, _api_putstrwin, _api_boxfillwin, _api_point, _api_refreshwin
+	GLOBAL	_api_initmalloc, _api_malloc, _api_free
 	GLOBAL	_api_end
 
 [SECTION .text]
@@ -76,6 +77,87 @@ _api_boxfillwin:		;void api_boxfillwin(int win, int lx0, int ly0, int lx1, int l
 	POP		ESI
 	POP		EDI
 	RET
+
+_api_initmalloc:	;void  api_initmalloc(void);
+	PUSH	EBX
+	MOV		EDX,	8
+	MOV		EBX,	[CS:0x0020];	malloc内存空间的地址
+	MOV		EAX,	EBX
+	ADD		EAX,	32*1024
+	MOV		ECX,	[CS:0x0000];	数据段的大小
+	SUB		ECX,	EAX
+	INT		0x40
+	POP		EBX
+	RET
+
+_api_malloc:		;char *api_malloc(int size);
+	PUSH	EBX
+	MOV		EDX,	9
+	MOV		EBX,	[CS:0x0020]
+	MOV		ECX,	[ESP+8]
+	INT		0x40
+	POP		EBX
+	RET
+
+_api_free:			;void api_free(char *addr, int size);
+	PUSH	EBX
+	MOV		EDX,	10
+	MOV		EBX,	[CS:0x0020]
+	MOV		EAX,	[ESP+8]
+	MOV		ECX,	[ESP+12]
+	INT		0x40
+	POP		EBX
+	RET
+
+_api_point:		;void api_point(int win, int x, int y, int col)
+	PUSH	EDI
+	PUSH	ESI
+	PUSH	EBX
+	MOV		EDX,	11
+	MOV		EBX,	[esp+16];win
+	MOV		ESI,	[esp+20];
+	MOV		EDI,	[esp+24]
+	MOV		eax,	[esp+28]
+	INT		0x40
+	pop		ebx
+	pop		esi
+	pop		edi
+	ret
+
+_api_refreshwin:	;void api_refreshwin(int win, int x0, int y0, int x1, int y1);
+	PUSH	EDI
+	PUSH	ESI
+	PUSH	EBX
+	MOV		EDX,	12
+	MOV		EBX,	[esp+16];win
+	MOV		EAX,	[esp+20];
+	MOV		ECX,	[esp+24];
+	MOV		ESI,	[esp+28]
+	MOV		edi,	[esp+32]
+	INT		0x40
+	pop		ebx
+	pop		esi
+	pop		edi
+	ret
+
+_api_linewin:	;void api_linewin(int win, int x0, int y0, int x1, int y1, int col);
+	push	edi
+	push	esi
+	push	ebp
+	push	ebx
+	mov		edx,	13
+	mov		ebx,	[esp+20]
+	mov		eax,	[esp+24]
+	mov		ecx,	[esp+28]
+	mov		esi,	[esp+32]
+	mov		edi,	[esp+36]
+	mov		ebp,	[esp+40]
+	int		0x40
+	pop		ebx
+	pop		ebp
+	pop		esi
+	pop		edi
+	ret
 
 _api_end:
 	MOV		edx, 4
