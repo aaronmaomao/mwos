@@ -51,7 +51,7 @@ $(objp)hello4.bim: $(hello4_objs) Makefile
 	$(obj2bim) @$(rulefile) out:$(objp)hello4.bim stack:1k map:$(objp)hello4.map $(hello4_objs)	
 
 winhello.mwe: $(objp)winhello.bim Makefile
-	$(bim2hrb) $(objp)winhello.bim winhello.mwe 40k
+	$(bim2hrb) $(objp)winhello.bim winhello.mwe 48k
 $(objp)winhello.bim: $(winhello_objs) Makefile
 	$(obj2bim) @$(rulefile) out:$(objp)winhello.bim stack:1k map:$(objp)winhello.map $(winhello_objs)	
 	

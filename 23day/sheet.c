@@ -48,6 +48,7 @@ SHEET *sheet_alloc(SHEETCTL *ctl)
 			sheet = &(ctl->sheets[i]);	//取得空闲图层的地址
 			sheet->flags = SHEET_USE;	//标记为该图层正在使用
 			sheet->zindex = -1;	//隐藏
+			sheet->task = 0;
 			return sheet;
 		}
 	}

@@ -4,7 +4,7 @@
 [BITS 32]		;制作32位模式的机器语言
 [FILE "a_nask.asm"]	;制作目标文件信息
 
-	GLOBAL	_api_putchar, _api_putstr0, _api_openwin, _api_putstrwin, _api_boxfillwin, _api_point, _api_refreshwin
+	GLOBAL	_api_putchar, _api_putstr0, _api_openwin, _api_putstrwin, _api_boxfillwin, _api_point, _api_refreshwin, _api_linewin, _api_closewin, _api_getkey
 	GLOBAL	_api_initmalloc, _api_malloc, _api_free
 	GLOBAL	_api_end
 
@@ -157,6 +157,20 @@ _api_linewin:	;void api_linewin(int win, int x0, int y0, int x1, int y1, int col
 	pop		ebp
 	pop		esi
 	pop		edi
+	ret
+
+_api_closewin:		;void api_closewin(int win);
+	push	ebx
+	mov		edx,	14
+	mov		ebx,	[esp+8];	win
+	int		0x40
+	pop		ebx
+	ret
+
+_api_getkey:	;int api_getkey(int mode); //mode=1休眠直到有键盘输入，mode=0不休眠有键盘输入则返回，无键盘输入则返回-1
+	mov		edx,	15
+	mov		eax,	[esp+4]
+	int		0x40
 	ret
 
 _api_end:

@@ -9,16 +9,16 @@
 #include "string.h"
 #include "stdio.h"
 
+void mw_api_linewin(SHEET *sht, int x0, int y0, int x1, int y1, int col);
+
 void console_task(SHEET *sht, uint memtotal)
 {
-	TIMER *cursor_timer;
 	TASK *task = task_now();
 	char cmdLine[30];
 	CONSOLE cons;
 	int dat, fifobuf[128];
 	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
 	int *fat = (int *)memman_alloc_4k(memman, 4 * 2880);
-
 	cons.cur_x = 8;
 	cons.cur_y = 28;
 	cons.cur_c = -1;
@@ -26,9 +26,9 @@ void console_task(SHEET *sht, uint memtotal)
 	*((int *)0x0fec) = (int)&cons;
 
 	fifo32_init(&task->fifo, 128, fifobuf, task);
-	cursor_timer = timer_alloc();
-	timer_init(cursor_timer, &task->fifo, 1);
-	timer_settime(cursor_timer, 50);
+	cons.timer = timer_alloc();
+	timer_init(cons.timer, &task->fifo, 1);
+	timer_settime(cons.timer, 50);
 
 	file_readfat(fat, (uchar *)(ADR_DISKIMG + 0x000200));
 	cons_putchar(&cons, '>', 1);
@@ -44,18 +44,18 @@ void console_task(SHEET *sht, uint memtotal)
 			io_sti();
 			if (dat <= 1) {	//光标闪烁
 				if (dat != 0) {
-					timer_init(cursor_timer, &task->fifo, 0);
+					timer_init(cons.timer, &task->fifo, 0);
 					if (cons.cur_c >= 0) {
 						cons.cur_c = COL8_FFFFFF;
 					}
 				}
 				else {
-					timer_init(cursor_timer, &task->fifo, 1);
+					timer_init(cons.timer, &task->fifo, 1);
 					if (cons.cur_c >= 0) {
 						cons.cur_c = COL8_000000;
 					}
 				}
-				timer_settime(cursor_timer, 50);
+				timer_settime(cons.timer, 50);
 			}
 			if (dat == 2) {	//光标ON
 				cons.cur_c = COL8_FFFFFF;
@@ -126,6 +126,8 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
 	SEGMENT_DESC *gdt = (SEGMENT_DESC *)ADR_GDT;
 	TASK *task = task_now();
+	SHEETCTL *shtctl;
+	SHEET *sht;
 
 	for (i = 0; i < 13; i++) {
 		if (cmdLine[i] <= ' ') {
@@ -159,6 +161,13 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 				q[esp + i] = p[dathrb + i];
 			}
 			start_app(0x1b, 1003 * 8, esp, 1004 * 8, &(task->tss.esp0));
+			shtctl = (SHEETCTL *)*((int *)0x0fe4);
+			for (i = 0; i < MAX_SHEETS; i++) {
+				sht = &(shtctl->sheets[i]);
+				if (sht->flags != 0 && sht->task == task) {
+					sheet_free(sht);
+				}
+			}
 			memman_free_4k(memman, (int)q, segsize);
 		}
 		else {
@@ -340,6 +349,7 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	SHEETCTL *shtctl = (SHEETCTL *) *((int *)0x0fe4);
 	SHEET *sht;
 	int *reg = &eax + 1;
+	int dat;
 	if (edx == 1) {
 		cons_putchar(cons, eax & 0xff, 1);
 	}
@@ -354,6 +364,7 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	}
 	else if (edx == 5) {
 		sht = sheet_alloc(shtctl);
+		sht->task = task;
 		sheet_setbuf(sht, (char *)ebx + ds_base, esi, edi, eax);
 		make_window8((char *)ebx + ds_base, esi, edi, (char *)ecx + ds_base, 0);
 		sheet_slide(sht, 100, 50);
@@ -401,13 +412,98 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	}
 	else if (edx == 13) {  //画直线
 		sht = (SHEET *)(ebx & 0xfffffffe);
+		mw_api_linewin(sht, eax, ecx, esi, edi, ebp);
+		if ((ebx & 1) == 0) {
+			sheet_refresh(sht, esi, edi, esi + 1, edi + 1);
+		}
+	}
+	else if (edx == 14) {
+		sheet_free((SHEET *)ebx);
+	}
+	else if (edx == 15) {
+		for (;;) {
+			io_cli();
+			if (fifo32_status(&task->fifo) == 0) {
+				if (eax != 0) {
+					task_sleep(task);
+				}
+				else {
+					io_sti();
+					reg[7] = -1;
+					return 0;
+				}
+			}
+			dat = fifo32_get(&task->fifo);
+			io_sti();
+			if (dat <= 1) { /* 光标定时器 */
+				timer_init(cons->timer, &task->fifo, 1); //运行应用程序时不需要闪烁光标，所以总是1
+				timer_settime(cons->timer, 50);
+			}
+			if (dat == 2) {	/* 光标ON */
+				cons->cur_c = COL8_FFFFFF;
+			}
+			if (dat == 3) {	/* 光标OFF */
+				cons->cur_c = -1;
+			}
+			if (256 <= dat && dat <= 511) { /* 键盘数据 */
+				reg[7] = dat - 256;
+				return 0;
+			}
+		}
 	}
 	return 0;
 }
 
 /* 在win上画直线 */
-void mw_api_linewin(SHEET *sht, int x0, int y0, int x1, int y1) {
+void mw_api_linewin(SHEET *sht, int x0, int y0, int x1, int y1, int col) {
+	int i, x, y, len, dx, dy;
+	dx = x1 - x0;
+	dy = y1 - y0;
+	x = x0 << 10;
+	y = y0 << 10;
+	if (dx < 0) {
+		dx = -dx;
+	}
+	if (dy < 0) {
+		dy = -dy;
+	}
+	if (dx >= dy) {
+		len = dx + 1;
+		if (x0 > x1) {
+			dx = -1024;
+		}
+		else {
+			dx = 1024;
+		}
+		if (y0 <= y1) {
+			dy = ((y1 - y0 + 1) << 10) / len;
+		}
+		else {
+			dy = ((y1 - y0 - 1) << 10) / len;
+		}
+	}
+	else {
+		len = dy + 1;
+		if (y0 > y1) {
+			dy = -1024;
+		}
+		else {
+			dy = 1024;
+		}
+		if (x0 <= x1) {
+			dx = ((x1 - x0 + 1) << 10) / len;
+		}
+		else {
+			dx = ((x1 - x0 - 1) << 10) / len;
+		}
+	}
 
+	for (i = 0; i < len; i++) {
+		sht->buf[(y >> 10) * sht->xsize + (x >> 10)] = col;
+		x += dx;
+		y += dy;
+	}
+	return;
 }
 
 /**

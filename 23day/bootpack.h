@@ -196,6 +196,7 @@ typedef struct SHEET {	//图层
 	uchar *buf;
 	int xsize, ysize, lx, ly, col_inv, zindex, flags;	//col_inv记录本图层的透明标识
 	struct SHEETCTL *ctl;
+	struct TASK *task;
 } SHEET;
 
 typedef struct SHEETCTL {	//所有图层管理(共9232byte)
@@ -337,6 +338,7 @@ typedef struct CONSOLE
 {
 	SHEET *sht;
 	int cur_x, cur_y, cur_c;
+	TIMER *timer;
 } CONSOLE;
 void console_task(SHEET *sht, uint memtotal);
 void cons_newline(CONSOLE *cons);
