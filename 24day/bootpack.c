@@ -34,7 +34,7 @@ void HariMain(void)
 	uint memtotal;
 	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 	SHEETCTL *shtctl;
-	SHEET *sht_back, *sht_mouse, *sht_win, *sht_cons, *sht = 0;
+	SHEET *sht_back, *sht_mouse, *sht_win, *sht_cons, *sht = 0, *key_win;
 	uchar *buf_back, buf_mouse[16 * 16], *buf_win, *buf_cons;
 	TIMER *cursor_timer;
 	TASK *task_m, *task_cons;
@@ -95,6 +95,9 @@ void HariMain(void)
 	cursor_timer = timer_alloc();
 	timer_init(cursor_timer, &fifo_a, 1);
 	timer_settime(cursor_timer, 50);
+	key_win = sht_win;
+	sht_cons->task = task_cons;
+	sht_cons->flags |= 0x20;	//0x20表示有光标
 	//init mouse
 	sht_mouse = sheet_alloc(shtctl);
 	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);
@@ -128,6 +131,10 @@ void HariMain(void)
 		else {
 			dat = fifo32_get(&fifo_a);
 			io_sti();
+			if(key_win->flags == 0){	//输入窗口已被关闭
+				key_win = shtctl->sheets[shtctl->top-1];
+				//cursor_c = keyw
+			}
 			if (256 <= dat && dat <= 511) {		//键盘数据
 				sprintf(temp, "%02X", dat - 256);
 				putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, temp, 2);
@@ -273,6 +280,16 @@ void HariMain(void)
 										if (3 <= x&&x < sht->xsize - 3 && 3 <= y&&y < 21) {
 											mmx = mx;
 											mmy = my;
+										}
+										if (sht->xsize - 21 <= x && x < sht->xsize - 5 && 5 <= y && y < 19) { //点击窗口关闭按钮
+											if (sht->task != 0) {
+												cons = (CONSOLE *) *((int *) 0x0fec);
+												cons_putstr0(cons, "\nBreak (mouse):\n");
+												io_cli();
+												task_cons->tss.eax = (int) &(task_cons->tss.esp0);
+												task_cons->tss.eip = (int) asm_end_app;
+												io_sti();
+											}
 										}
 										break;
 									}
