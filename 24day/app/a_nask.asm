@@ -5,6 +5,7 @@
 [FILE "a_nask.asm"]	;制作目标文件信息
 
 	GLOBAL	_api_putchar, _api_putstr0, _api_openwin, _api_putstrwin, _api_boxfillwin, _api_point, _api_refreshwin, _api_linewin, _api_closewin, _api_getkey
+	GLOBAL	_api_alloctimer, _api_inittimer, _api_settimer, _api_freetimer
 	GLOBAL	_api_initmalloc, _api_malloc, _api_free
 	GLOBAL	_api_end
 
@@ -171,6 +172,37 @@ _api_getkey:	;int api_getkey(int mode); //mode=1休眠直到有键盘输入，mo
 	mov		edx,	15
 	mov		eax,	[esp+4]
 	int		0x40
+	ret
+
+_api_alloctimer:	;int api_alloctimer(void)
+	mov		edx,	16
+	int		0x40
+	ret
+
+_api_inittimer:		;void api_inittimer(int timer, int data);
+	push	ebx
+	mov		edx,	17
+	mov		ebx,	[esp+8]
+	mov		eax,	[esp+12]
+	int		0x40
+	pop		ebx
+	ret
+
+_api_settimer:		;void api_settimer(int timer, int time);
+	push	ebx
+	mov		edx,	18
+	mov		ebx,	[esp+8]
+	mov		eax,	[esp+12]
+	int		0x40
+	pop		ebx
+	ret
+
+_api_freetimer:		;void api_freetimer(int timer)
+	push	ebx
+	mov		edx,	19
+	mov		ebx,	[esp+8]		;timer
+	int		0x40
+	pop		ebx
 	ret
 
 _api_end:

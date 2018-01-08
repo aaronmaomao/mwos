@@ -54,6 +54,7 @@ mwos.img: ipl10.bin os.sys Makefile
 	copy from:./app/bug1.mwe to:@: \
 	copy from:./app/hello4.mwe to:@: \
 	copy from:./app/winhello.mwe to:@: \
+	copy from:./app/noodle.mwe to:@: \
 	imgout:../mwos.img
 
 ipl10.bin: ipl10.asm Makefile

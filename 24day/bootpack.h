@@ -332,6 +332,7 @@ void make_window8(uchar *buf, int xsize, int ysize, char *title, char act);
 void make_textbox8(SHEET *sht, int lx, int ly, int length, int height, int color);
 void make_wtitle8(uchar *buf, int xsize, char *title, char act);
 void putfonts8_asc_sht(SHEET *sht, int lx, int ly, int color, int bcolor, char *str, int length);
+void change_wtitle8(SHEET *sht, char act);
 
 /** console.c */
 typedef struct CONSOLE

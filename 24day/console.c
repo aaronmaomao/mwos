@@ -164,7 +164,7 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 			shtctl = (SHEETCTL *)*((int *)0x0fe4);
 			for (i = 0; i < MAX_SHEETS; i++) {
 				sht = &(shtctl->sheets[i]);
-				if (sht->flags != 0 && sht->task == task) {
+				if ((sht->flags & 0x11) == 0x11 && sht->task == task) {
 					sheet_free(sht);
 				}
 			}
@@ -365,6 +365,7 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	else if (edx == 5) {
 		sht = sheet_alloc(shtctl);
 		sht->task = task;
+		sht->flags |= 0x10;
 		sheet_setbuf(sht, (char *)ebx + ds_base, esi, edi, eax);
 		make_window8((char *)ebx + ds_base, esi, edi, (char *)ecx + ds_base, 0);
 		sheet_slide(sht, 100, 50);
@@ -417,10 +418,10 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			sheet_refresh(sht, esi, edi, esi + 1, edi + 1);
 		}
 	}
-	else if (edx == 14) {
+	else if (edx == 14) {  //关闭窗口
 		sheet_free((SHEET *)ebx);
 	}
-	else if (edx == 15) {
+	else if (edx == 15) {  //获取按键值（1：阻塞，0：非阻塞）
 		for (;;) {
 			io_cli();
 			if (fifo32_status(&task->fifo) == 0) {
@@ -445,11 +446,23 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			if (dat == 3) {	/* 光标OFF */
 				cons->cur_c = -1;
 			}
-			if (256 <= dat && dat <= 511) { /* 键盘数据 */
+			if (256 <= dat) { /* 键盘数据 */
 				reg[7] = dat - 256;
 				return 0;
 			}
 		}
+	}
+	else if (edx == 16) {  //申请定时器
+		reg[7] = timer_alloc();
+	}
+	else if (edx == 17) {  //初始化定时器
+		timer_init((TIMER *)ebx, &task->fifo, eax + 256);
+	}
+	else if (edx == 18) {  //设置定时器
+		timer_settime((TIMER *)ebx, eax);
+	}
+	else if (edx == 19) {  //释放定时器
+		timer_free((TIMER *)ebx);
 	}
 	return 0;
 }

@@ -39,7 +39,8 @@ void make_wtitle8(uchar *buf, int xsize, char *title, char act)
 	if (act != 0) {
 		tcol = COL8_FFFFFF;
 		tbcol = COL8_000084;
-	} else {
+	}
+	else {
 		tcol = COL8_C6C6C6;
 		tbcol = COL8_848484;
 	}
