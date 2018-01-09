@@ -100,17 +100,16 @@ void change_wtitle8(SHEET *sht, char act)
 		tc_old = COL8_FFFFFF;
 		tbc_old = COL8_000084;
 	}
-
 	for (y = 3; y <= 20; y++) {
-		for (x = 3; x <= xsize; x++) {
-			c = buf[y*xsize + x];
+		for (x = 3; x <= xsize - 4; x++) {
+			c = buf[y * xsize + x];
 			if (c == tc_old && x <= xsize - 22) {
 				c = tc_new;
 			}
 			else if (c == tbc_old) {
 				c = tbc_new;
 			}
-			buf[y*xsize + x] = c;
+			buf[y * xsize + x] = c;
 		}
 	}
 	sheet_refresh(sht, 3, 3, xsize, 21);

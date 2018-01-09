@@ -64,7 +64,7 @@ void HariMain(void)
 	task_m = task_init(memman);
 	fifo_a.task = task_m;	//设置任务的fifo
 	task_run(task_m, 1, 2);
-	(*((int *)0x0fe4)) = (int *)shtctl;
+	*((int *)0x0fe4) = (int)shtctl;
 	//init screen
 	sht_back = sheet_alloc(shtctl);
 	buf_back = (uchar *)memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
@@ -128,7 +128,6 @@ void HariMain(void)
 		}
 		io_cli();
 		if (fifo32_status(&fifo_a) == 0) {
-			//io_stihlt();
 			task_sleep(task_m);
 			io_sti();
 		}
@@ -140,8 +139,6 @@ void HariMain(void)
 				cursor_c = keywin_on(key_win, sht_win, cursor_c);
 			}
 			if (256 <= dat && dat <= 511) {		//键盘数据
-				sprintf(temp, "%02X", dat - 256);
-				putfonts8_asc_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_008484, temp, 2);
 				if (dat < 0x80 + 256) {	//将按键编码转为字符编码
 					if (key_shift == 0) {
 						temp[0] = keytable0[dat - 256];

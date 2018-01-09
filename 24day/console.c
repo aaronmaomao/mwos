@@ -168,12 +168,12 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 					sheet_free(sht);
 				}
 			}
+			timer_cancelall(&task->fifo);
 			memman_free_4k(memman, (int)q, segsize);
 		}
 		else {
 			cons_putstr0(cons, "This is not an Executable file");
 		}
-
 		memman_free_4k(memman, (int)p, fileinfo->size);
 		cons_newline(cons);
 		return 1;
@@ -392,7 +392,7 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		memman_free((MEMMAN *)(ebx + ds_base), eax, ecx);
 	}
 	else if (edx == 9) {  //应用程序的malloc
-		ecx = (ecx + 0x0f) & 0xfffffffe;
+		ecx = (ecx + 0x0f) & 0xfffffff0;
 		reg[7] = memman_alloc((MEMMAN *)(ebx + ds_base), ecx);
 	}
 	else if (edx == 10) {  //应用程序的free
@@ -453,7 +453,8 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 		}
 	}
 	else if (edx == 16) {  //申请定时器
-		reg[7] = timer_alloc();
+		reg[7] = (int)timer_alloc();
+		((TIMER *)(reg[7]))->flags2 = 1;  //表示此定时器是app申请的
 	}
 	else if (edx == 17) {  //初始化定时器
 		timer_init((TIMER *)ebx, &task->fifo, eax + 256);

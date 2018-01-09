@@ -21,7 +21,7 @@ void api_end(void);
 
 void HariMain(void) {
 	char *buf, s[12];
-	int win, timer, hou, min, sec;
+	int win, timer, hou = 0, min = 0, sec = 0;
 	api_initmalloc();
 	buf = api_malloc(150 * 50);
 	win = api_openwin(buf, 150, 50, -1, "noodle");
@@ -29,7 +29,7 @@ void HariMain(void) {
 	api_inittimer(timer, 128);
 	for (;;) {
 		sprintf(s, "%5d:%2d:%2d", hou, min, sec);
-		api_boxfillwin(win, 28,27,115,41,7);
+		api_boxfillwin(win, 28, 27, 115, 41, 7);
 		api_putstrwin(win, 28, 27, 0, 11, s);
 
 		api_settimer(timer, 100);

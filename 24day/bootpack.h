@@ -251,7 +251,7 @@ void sheet_free(SHEET *sht);
 #define TIMER_FLAGS_USING	2 	//定时器正在运行中
 
 typedef struct TIMER {
-	uint timeout, flags;
+	uint timeout, flags, flags2;
 	FIFO32 *fifo;
 	int data;
 	struct TIMER *next;
@@ -276,6 +276,8 @@ TIMER *timer_alloc(void);
 void timer_free(TIMER *timer);
 void timer_init(TIMER *timer, FIFO32 *fifo, int data);
 void timer_settime(TIMER *timer, uint timeout);
+int timer_cancel(TIMER *timer);
+void timer_cancelall(FIFO32 *fifo);
 void inthandler20(int *esp);
 
 /** mtask.c */

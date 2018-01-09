@@ -44,6 +44,7 @@ TIMER *timer_alloc(void)
 	for (i = 0; i < MAX_TIMER; i++) {
 		if (timerctl.timers[i].flags == 0) {
 			timerctl.timers[i].flags = TIMER_FLAGS_ALLOC;
+			timerctl.timers[i].flags2 = 0;
 			return &timerctl.timers[i];
 		}
 	}
@@ -93,6 +94,53 @@ void timer_settime(TIMER *timer, uint timeout)
 	}
 }
 
+/* 取消定时器 */
+int timer_cancel(TIMER *timer) {
+	int e;
+	TIMER *t;
+	e = io_load_eflags();
+	io_cli();
+	if (timer->flags == TIMER_FLAGS_USING) {
+		if (timer == timerctl.mintimer) {
+			t = timer->next;
+			timerctl.mintimer = t;
+			timerctl.mintimes = t->timeout;
+		}
+		else {
+			t = timerctl.mintimer;
+			for (;;) {
+				if (t->next == timer) {
+					break;
+				}
+				t = t->next;
+			}
+			t->next = timer->next;
+		}
+		timer->flags = TIMER_FLAGS_ALLOC;
+		io_store_eflags(e);
+		return 1;
+	}
+	io_store_eflags(e);
+	return 0;
+}
+
+/*取消某个app打开的定时器*/
+void timer_cancelall(FIFO32 *fifo) {
+	int e, i;
+	TIMER *t;
+	e = io_load_eflags();
+	io_cli();
+	for (i = 0; i < MAX_TIMER; i++) {
+		t = &timerctl.timers[i];
+		if (t->flags != 0 && t->flags2 != 0 && t->fifo == fifo) {
+			timer_cancel(t);
+			timer_free(t);
+		}
+	}
+	io_store_eflags(e);
+	return;
+}
+
 //定时器中断
 void inthandler20(int *esp)
 {
@@ -111,7 +159,8 @@ void inthandler20(int *esp)
 		timer->flags = TIMER_FLAGS_ALLOC;	//超时
 		if (timer != task_timer) {
 			fifo32_put(timer->fifo, timer->data);
-		} else {
+		}
+		else {
 			ts = 1;
 		}
 		timer = timer->next;
