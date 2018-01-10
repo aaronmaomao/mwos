@@ -28,8 +28,9 @@ bug3_objs = $(objp)bug3.obj $(objp)a_nask.obj
 hello4_objs = $(objp)hello4.obj $(objp)a_nask.obj
 winhello_objs = $(objp)winhello.obj $(objp)a_nask.obj
 noodle_objs = $(objp)noodle.obj $(objp)a_nask.obj
+color_objs = $(objp)color.obj $(objp)a_nask.obj
 
-default: bug1.mwe bug2.mwe bug3.mwe hello4.mwe winhello.mwe noodle.mwe
+default: bug1.mwe bug2.mwe bug3.mwe hello4.mwe winhello.mwe noodle.mwe color.mwe
 	
 bug1.mwe: $(objp)bug1.bim Makefile
 	$(bim2hrb) $(objp)bug1.bim bug1.mwe 0
@@ -60,6 +61,11 @@ noodle.mwe: $(objp)noodle.bim Makefile
 	$(bim2hrb) $(objp)noodle.bim noodle.mwe 40k
 $(objp)noodle.bim: $(noodle_objs) Makefile
 	$(obj2bim) @$(rulefile) out:$(objp)noodle.bim stack:1k map:$(objp)noodle.map $(noodle_objs)
+
+color.mwe: $(objp)color.bim Makefile
+	$(bim2hrb) $(objp)color.bim color.mwe 56K
+$(objp)color.bim: $(color_objs) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)color.bim stack:1k map:$(objp)color.map $(color_objs)
 	
 $(objp)a_nask.obj: a_nask.asm Makefile
 	$(nask) a_nask.asm $(objp)a_nask.obj $(objp)a_nask.lst
