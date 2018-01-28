@@ -23,7 +23,8 @@ void console_task(SHEET *sht, uint memtotal)
 	cons.cur_y = 28;
 	cons.cur_c = -1;
 	cons.sht = sht;
-	*((int *)0x0fec) = (int)&cons;
+	//*((int *)0x0fec) = (int)&cons;
+	task->cons = &cons;
 
 	fifo32_init(&task->fifo, 128, fifobuf, task);
 	cons.timer = timer_alloc();
@@ -65,7 +66,7 @@ void console_task(SHEET *sht, uint memtotal)
 				cons.cur_c = -1;
 			}
 			if (256 <= dat && dat <= 511) {	//键盘数据
-				if (dat == 8 + 256) {	//退格键                                                                                                                                                                                                                            
+				if (dat == 8 + 256) {	//退格键
 					if (cons.cur_x > 16) {
 						cons_putchar(&cons, ' ', 0);
 						cons.cur_x -= 8;
@@ -154,7 +155,8 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 			datsize = *((int *)(p + 0x0010));	//向数据段传送的部分的字节数（即“helloworld”的大小）
 			dathrb = *((int *)(p + 0x0014));	//向数据段传送的的部分在hrb中的位置（即“helloworld”的偏移地址）
 			q = (char *)memman_alloc_4k(memman, segsize);
-			*((int *)0x0fe8) = (int)q;	//把数据段的地址存起来
+			//*((int *)0x0fe8) = (int)q;	//把数据段的地址存起来
+			task->ds_base = (int) q;
 			set_segmdesc(gdt + 1003, fileinfo->size - 1, (int)p, AR_CODE32_ER + 0x60);	//代码段：注：1003之前的都被用了,0x60意思是这个段是应用程序用
 			set_segmdesc(gdt + 1004, segsize - 1, (int)q, AR_DATA32_RW + 0x60);		//数据段
 			for (i = 0; i < datsize; i++) {
@@ -343,9 +345,11 @@ void cons_newline(CONSOLE *cons)
  */
 int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
 {
-	CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
-	int ds_base = *((int *)0x0fe8);	//应用程序的数据段
 	TASK *task = task_now();
+	//CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
+	//int ds_base = *((int *)0x0fe8);	//应用程序的数据段
+	CONSOLE *cons = task->cons;
+	int ds_base = task->ds_base;
 	SHEETCTL *shtctl = (SHEETCTL *) *((int *)0x0fe4);
 	SHEET *sht;
 	int *reg = &eax + 1;
@@ -539,8 +543,9 @@ void mw_api_linewin(SHEET *sht, int x0, int y0, int x1, int y1, int col) {
  */
 int *inthandler0d(int *esp)
 {
-	CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
 	TASK *task = task_now();
+	//CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
+	CONSOLE *cons = task->cons;
 	cons_putstr0(cons, "\nINT 0D : General Protected Exception.\n");
 	return &(task->tss.esp0);
 }
@@ -550,9 +555,10 @@ int *inthandler0d(int *esp)
  */
 int *inthandler0c(int *esp)
 {
-	CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
 	char temp[30];
 	TASK *task = task_now();
+	//CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
+	CONSOLE *cons = task->cons;
 	cons_putstr0(cons, "\nINT 0D : Stack Exception.\n");
 	sprintf(temp, "EIP = %08X\n", esp[11]);
 	cons_putstr0(cons, temp);

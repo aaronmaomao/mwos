@@ -38,10 +38,10 @@ void HariMain(void)
 	uint memtotal;
 	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 	SHEETCTL *shtctl;
-	SHEET *sht_back, *sht_mouse, *sht_win, *sht_cons, *sht = 0, *key_win;
-	uchar *buf_back, buf_mouse[16 * 16], *buf_win, *buf_cons;
+	SHEET *sht_back, *sht_mouse, *sht_win, *sht_cons[2], *sht = 0, *key_win;
+	uchar *buf_back, buf_mouse[16 * 16], *buf_win, *buf_cons[2];
 	TIMER *cursor_timer;
-	TASK *task_m, *task_cons;
+	TASK *task_m, *task_cons[2];
 	CONSOLE *cons;
 	int j, x, y, mmx = -1, mmy = -1;
 
@@ -70,24 +70,31 @@ void HariMain(void)
 	buf_back = (uchar *)memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
 	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
+
 	/*sht console*/
-	sht_cons = sheet_alloc(shtctl);
-	buf_cons = (uchar *)memman_alloc_4k(memman, 256 * 165);
-	sheet_setbuf(sht_cons, buf_cons, 256, 165, -1);
-	make_window8(buf_cons, 256, 165, "console", 0);
-	make_textbox8(sht_cons, 8, 28, 240, 128, COL8_000000);
-	task_cons = task_alloc();
-	task_cons->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;
-	task_cons->tss.eip = (int)&console_task;
-	task_cons->tss.es = 1 * 8;
-	task_cons->tss.cs = 2 * 8;
-	task_cons->tss.ss = 1 * 8;
-	task_cons->tss.ds = 1 * 8;
-	task_cons->tss.fs = 1 * 8;
-	task_cons->tss.gs = 1 * 8;
-	*((int *)(task_cons->tss.esp + 4)) = (int)sht_cons;
-	*((int *)(task_cons->tss.esp + 8)) = memtotal;
-	task_run(task_cons, 2, 2);
+
+	for (dat = 0; dat < 2; dat++) {
+		sht_cons[dat] = sheet_alloc(shtctl);
+		buf_cons[dat] = (uchar *)memman_alloc_4k(memman, 256 * 165);
+		sheet_setbuf(sht_cons[dat], buf_cons[dat], 256, 165, -1);
+		make_window8(buf_cons[dat], 256, 165, "console", 0);
+		make_textbox8(sht_cons[dat], 8, 28, 240, 128, COL8_000000);
+		task_cons[dat] = task_alloc();
+		task_cons[dat]->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;
+		task_cons[dat]->tss.eip = (int) &console_task;
+		task_cons[dat]->tss.es = 1 * 8;
+		task_cons[dat]->tss.cs = 2 * 8;
+		task_cons[dat]->tss.ss = 1 * 8;
+		task_cons[dat]->tss.ds = 1 * 8;
+		task_cons[dat]->tss.fs = 1 * 8;
+		task_cons[dat]->tss.gs = 1 * 8;
+		*((int *) (task_cons[dat]->tss.esp + 4)) = (int) sht_cons[dat];
+		*((int *) (task_cons[dat]->tss.esp + 8)) = memtotal;
+		task_run(task_cons[dat], 2, 2);
+		sht_cons[dat]->task = task_cons[dat];
+		sht_cons[dat]->flags |= 0x20;	//0x20表示有光标
+	}
+
 	//init win
 	sht_win = sheet_alloc(shtctl);
 	buf_win = (uchar *)memman_alloc_4k(memman, 160 * 52);
@@ -99,9 +106,7 @@ void HariMain(void)
 	cursor_timer = timer_alloc();
 	timer_init(cursor_timer, &fifo_a, 1);
 	timer_settime(cursor_timer, 50);
-	key_win = sht_win;
-	sht_cons->task = task_cons;
-	sht_cons->flags |= 0x20;	//0x20表示有光标
+
 	//init mouse
 	sht_mouse = sheet_alloc(shtctl);
 	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);
@@ -109,13 +114,17 @@ void HariMain(void)
 	my = (binfo->scrny - 28 - 16) / 2;
 
 	sheet_slide(sht_back, 0, 0);
-	sheet_slide(sht_cons, 32, 4);
+	sheet_slide(sht_cons[0], 56, 6);
+	sheet_slide(sht_cons[1], 8, 2);
 	sheet_slide(sht_win, 64, 56);
 	sheet_slide(sht_mouse, mx, my);
 	sheet_updown(sht_back, 0);
-	sheet_updown(sht_cons, 1);
-	sheet_updown(sht_win, 2);
-	sheet_updown(sht_mouse, 3);
+	sheet_updown(sht_cons[0], 1);
+	sheet_updown(sht_cons[1], 2);
+	sheet_updown(sht_win, 3);
+	sheet_updown(sht_mouse, 4);
+
+	key_win = sht_win;
 
 	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 	fifo32_put(&keycmd, KEYCMD_LED);
@@ -222,12 +231,12 @@ void HariMain(void)
 					fifo32_put(&keycmd, KEYCMD_LED);
 					fifo32_put(&keycmd, key_leds);
 				}
-				if (dat == 256 + 0x3b && key_shift != 0 && task_cons->tss.ss0 != 0) {  //shift+F1, 强制结束应用程序
+				if (dat == 256 + 0x3b && key_shift != 0 && task_cons[0]->tss.ss0 != 0) {  //shift+F1, 强制结束应用程序
 					cons = (CONSOLE *)*((int *)0x0fec);
 					cons_putstr0(cons, "\nBreak\n");
 					io_cli();
-					task_cons->tss.eax = (int)&(task_cons->tss.esp0);
-					task_cons->tss.eip = (int)asm_end_app;
+					task_cons[0]->tss.eax = (int)&(task_cons[0]->tss.esp0);
+					task_cons[0]->tss.eip = (int)asm_end_app;
 					io_sti();
 				}
 				if (dat == 256 + 0xfa) {	//键盘接收到了数据
@@ -282,8 +291,8 @@ void HariMain(void)
 												cons = (CONSOLE *) *((int *)0x0fec);
 												cons_putstr0(cons, "\nBreak (mouse):\n");
 												io_cli();
-												task_cons->tss.eax = (int) &(task_cons->tss.esp0);
-												task_cons->tss.eip = (int)asm_end_app;
+												task_cons[0]->tss.eax = (int) &(task_cons[0]->tss.esp0);
+												task_cons[0]->tss.eip = (int)asm_end_app;
 												io_sti();
 											}
 										}

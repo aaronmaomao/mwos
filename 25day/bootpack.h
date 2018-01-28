@@ -301,6 +301,8 @@ typedef struct TASK {
 	int level, priority;
 	FIFO32 fifo;
 	TSS32 tss;
+	struct CONSOLE *cons;
+	int ds_base;
 } TASK;
 
 typedef struct TASKLEVEL {
