@@ -16,7 +16,7 @@ void console_task(SHEET *sht, uint memtotal)
 	TASK *task = task_now();
 	char cmdLine[30];
 	CONSOLE cons;
-	int dat, fifobuf[128];
+	int dat;
 	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
 	int *fat = (int *)memman_alloc_4k(memman, 4 * 2880);
 	cons.cur_x = 8;
@@ -26,7 +26,6 @@ void console_task(SHEET *sht, uint memtotal)
 	//*((int *)0x0fec) = (int)&cons;
 	task->cons = &cons;
 
-	fifo32_init(&task->fifo, 128, fifobuf, task);
 	cons.timer = timer_alloc();
 	timer_init(cons.timer, &task->fifo, 1);
 	timer_settime(cons.timer, 50);
@@ -157,12 +156,12 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 			q = (char *)memman_alloc_4k(memman, segsize);
 			//*((int *)0x0fe8) = (int)q;	//把数据段的地址存起来
 			task->ds_base = (int) q;
-			set_segmdesc(gdt + 1003, fileinfo->size - 1, (int)p, AR_CODE32_ER + 0x60);	//代码段：注：1003之前的都被用了,0x60意思是这个段是应用程序用
-			set_segmdesc(gdt + 1004, segsize - 1, (int)q, AR_DATA32_RW + 0x60);		//数据段
+			set_segmdesc(gdt + task->sel / 8 + 1000, fileinfo->size - 1, (int) p, AR_CODE32_ER + 0x60);	//代码段：注：0x60意思是这个段是应用程序用
+			set_segmdesc(gdt + task->sel / 8 + 2000, segsize - 1, (int) q, AR_DATA32_RW + 0x60);		//数据段
 			for (i = 0; i < datsize; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
-			start_app(0x1b, 1003 * 8, esp, 1004 * 8, &(task->tss.esp0));
+			start_app(0x1b, task->sel + 1000 * 8, esp, task->sel + 2000 * 8, &(task->tss.esp0));
 			shtctl = (SHEETCTL *)*((int *)0x0fe4);
 			for (i = 0; i < MAX_SHEETS; i++) {
 				sht = &(shtctl->sheets[i]);
