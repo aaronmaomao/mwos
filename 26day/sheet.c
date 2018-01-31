@@ -20,7 +20,7 @@ SHEETCTL *sheetctl_init(MEMMAN *memman, uchar *vram, int xsize, int ysize)
 	}
 	ctl->map = (uchar *) memman_alloc_4k(memman, xsize * ysize);
 	if (ctl->map == 0) {
-		memman_free_4k(memman, (int)ctl, sizeof(SHEETCTL));
+		memman_free_4k(memman, (int) ctl, sizeof(SHEETCTL));
 		goto err;
 	}
 	ctl->vram = vram;
@@ -91,7 +91,8 @@ void sheet_updown(SHEET *sht, int zindex)
 			ctl->sheetseq[zindex] = sht;
 			sheet_refreshmap(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, zindex + 1);
 			sheet_refreshsub(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, zindex + 1, oldindex);
-		} else {	//隐藏
+		}
+		else {	//隐藏
 			if (ctl->top > oldindex) {
 				for (tempindex = oldindex; tempindex < ctl->top; tempindex++) {	//去掉隐藏图层
 					ctl->sheetseq[tempindex] = ctl->sheetseq[tempindex + 1];	//调整图层位置（类似于列队中走了一个人）
@@ -102,14 +103,16 @@ void sheet_updown(SHEET *sht, int zindex)
 			sheet_refreshmap(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, 0);
 			sheet_refreshsub(ctl, sht->lx, sht->ly, sht->lx + sht->xsize, sht->ly + sht->ysize, 0, oldindex - 1);
 		}
-	} else if (zindex > oldindex) {		//比以前高
+	}
+	else if (zindex > oldindex) {		//比以前高
 		if (oldindex >= 0) {	//之前是非隐藏状态
 			for (tempindex = oldindex; tempindex < zindex; tempindex++) {
 				ctl->sheetseq[tempindex] = ctl->sheetseq[tempindex + 1];	//调整队伍，类似于前面的人往后调位置
 				ctl->sheetseq[tempindex]->zindex = tempindex;
 			}
 			ctl->sheetseq[zindex] = sht;	//调位成功
-		} else {	//之前是隐藏状态
+		}
+		else {	//之前是隐藏状态
 			for (tempindex = ctl->top; tempindex >= zindex; tempindex--) {
 				ctl->sheetseq[tempindex + 1] = ctl->sheetseq[tempindex];	//我靠，有人在插队￣へ￣
 				ctl->sheetseq[tempindex + 1]->zindex = tempindex + 1;
@@ -190,7 +193,7 @@ void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zin
 
 void sheet_refreshmap(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zindex)
 {
-	int index, bufy, bufx, ly, lx, tbufx0, tbufy0, tbufx1, tbufy1;
+	int index, bufy, bufx, ly, lx, tbufx0, tbufy0, tbufx1, tbufy1, *p, sid4;
 	SHEET *sht;
 	uchar *buf, sid, *map = ctl->map;
 	if (vx0 < 0) {
@@ -225,12 +228,37 @@ void sheet_refreshmap(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zin
 		if (tbufy1 > sht->ysize) {
 			tbufy1 = sht->ysize;
 		}
-		for (bufy = tbufy0; bufy < tbufy1; bufy++) {
-			ly = sht->ly + bufy;
-			for (bufx = tbufx0; bufx < tbufx1; bufx++) {
-				lx = sht->lx + bufx;
-				if (buf[bufy * sht->xsize + bufx] != sht->col_inv) {		//如果不是透明色
-					map[ly * ctl->xsize + lx] = sid;	//把sid与像素点对应起来
+		if (sht->col_inv == -1) {	//无透明色
+			if ((sht->lx & 3) == 0 && (tbufx0 & 3) == 0 && (tbufx1 & 3) == 0) {
+				tbufx1 = (tbufx1 - tbufx0) / 4;	//4字节型
+				sid4 = sid | sid << 8 | sid << 16 | sid << 24;
+				for (bufy = tbufy0; bufy < tbufy1; bufy++) {
+					lx = sht->lx + bufx;
+					ly = sht->ly + bufy;
+					p = (int *) &map[ly * ctl->xsize + lx];
+					for (bufx = 0; bufx < tbufx1; bufx++) {
+						p[bufx] = sid4;
+					}
+				}
+			}
+			else {
+				for (bufy = tbufx0; bufy < tbufy1; buf++) {	//1字节型
+					ly = sht->ly + bufy;
+					for (bufx = tbufx0; bufx < tbufx1; bufx++) {
+						lx = sht->lx + bufx;
+						map[ly * ctl->xsize + lx] = sid;
+					}
+				}
+			}
+		}
+		else {
+			for (bufy = tbufy0; bufy < tbufy1; bufy++) {
+				ly = sht->ly + bufy;
+				for (bufx = tbufx0; bufx < tbufx1; bufx++) {
+					lx = sht->lx + bufx;
+					if (buf[bufy * sht->xsize + bufx] != sht->col_inv) {		//如果不是透明色
+						map[ly * ctl->xsize + lx] = sid;	//把sid与像素点对应起来
+					}
 				}
 			}
 		}

@@ -40,7 +40,7 @@ void HariMain(void)
 	SHEET *sht_back, *sht_mouse, *sht_cons[2], *sht = 0, *key_win;
 	uchar *buf_back, buf_mouse[16 * 16], *buf_cons[2];
 	TASK *task_m, *task_cons[2], *task;
-	int j, x, y, mmx = -1, mmy = -1;
+	int j, x, y, mmx = -1, mmy = -1, mmx2 = 0;
 
 	init_gdtidt();
 	init_pic();
