@@ -25,17 +25,18 @@ static char keytable1[0x80] = {
 
 void keywin_off(SHEET *key_win);
 void keywin_on(SHEET *key_win);
+SHEET *open_console(SHEETCTL *shtctl, uint memtoal);
 
 void HariMain(void)
 {
-	BOOTINFO *binfo = (BOOTINFO *)ADR_BOOTINFO;
+	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
 	int fifobuf[128], keycmd_buf[32];
 	FIFO32 fifo_a, keycmd;
 	int mx, my, dat, key_shift = 0, key_leds = (binfo->leds >> 4) & 0x07, keycmd_wait = -1, *cons_fifo[2];
 	char temp[40];
 	MOUSE_DESCODE mdecode;
 	uint memtotal;
-	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 	SHEETCTL *shtctl;
 	SHEET *sht_back, *sht_mouse, *sht_cons[2], *sht = 0, *key_win;
 	uchar *buf_back, buf_mouse[16 * 16], *buf_cons[2];
@@ -61,38 +62,40 @@ void HariMain(void)
 	task_m = task_init(memman);
 	fifo_a.task = task_m;	//设置任务的fifo
 	task_run(task_m, 1, 2);
-	*((int *)0x0fe4) = (int)shtctl;
+	*((int *) 0x0fe4) = (int) shtctl;
 	//init screen
 	sht_back = sheet_alloc(shtctl);
-	buf_back = (uchar *)memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
+	buf_back = (uchar *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
 	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
 
 	/*sht console*/
+	sht_cons[0] = open_console(shtctl, memtotal);
+	sht_cons[1] = 0;
 
-	for (dat = 0; dat < 2; dat++) {
-		sht_cons[dat] = sheet_alloc(shtctl);
-		buf_cons[dat] = (uchar *)memman_alloc_4k(memman, 256 * 165);
-		sheet_setbuf(sht_cons[dat], buf_cons[dat], 256, 165, -1);
-		make_window8(buf_cons[dat], 256, 165, "console", 0);
-		make_textbox8(sht_cons[dat], 8, 28, 240, 128, COL8_000000);
-		task_cons[dat] = task_alloc();
-		task_cons[dat]->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;
-		task_cons[dat]->tss.eip = (int)&console_task;
-		task_cons[dat]->tss.es = 1 * 8;
-		task_cons[dat]->tss.cs = 2 * 8;
-		task_cons[dat]->tss.ss = 1 * 8;
-		task_cons[dat]->tss.ds = 1 * 8;
-		task_cons[dat]->tss.fs = 1 * 8;
-		task_cons[dat]->tss.gs = 1 * 8;
-		*((int *)(task_cons[dat]->tss.esp + 4)) = (int)sht_cons[dat];
-		*((int *)(task_cons[dat]->tss.esp + 8)) = memtotal;
-		task_run(task_cons[dat], 2, 2);
-		sht_cons[dat]->task = task_cons[dat];
-		sht_cons[dat]->flags |= 0x20;	//0x20表示有光标
-		cons_fifo[dat] = (int *)memman_alloc_4k(memman, 128 * 4);
-		fifo32_init(&task_cons[dat]->fifo, 128, cons_fifo[dat], task_cons[dat]);
-	}
+//	for (dat = 0; dat < 2; dat++) {
+//		sht_cons[dat] = sheet_alloc(shtctl);
+//		buf_cons[dat] = (uchar *) memman_alloc_4k(memman, 256 * 165);
+//		sheet_setbuf(sht_cons[dat], buf_cons[dat], 256, 165, -1);
+//		make_window8(buf_cons[dat], 256, 165, "console", 0);
+//		make_textbox8(sht_cons[dat], 8, 28, 240, 128, COL8_000000);
+//		task_cons[dat] = task_alloc();
+//		task_cons[dat]->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;
+//		task_cons[dat]->tss.eip = (int) &console_task;
+//		task_cons[dat]->tss.es = 1 * 8;
+//		task_cons[dat]->tss.cs = 2 * 8;
+//		task_cons[dat]->tss.ss = 1 * 8;
+//		task_cons[dat]->tss.ds = 1 * 8;
+//		task_cons[dat]->tss.fs = 1 * 8;
+//		task_cons[dat]->tss.gs = 1 * 8;
+//		*((int *) (task_cons[dat]->tss.esp + 4)) = (int) sht_cons[dat];
+//		*((int *) (task_cons[dat]->tss.esp + 8)) = memtotal;
+//		task_run(task_cons[dat], 2, 2);
+//		sht_cons[dat]->task = task_cons[dat];
+//		sht_cons[dat]->flags |= 0x20;	//0x20表示有光标
+//		cons_fifo[dat] = (int *) memman_alloc_4k(memman, 128 * 4);
+//		fifo32_init(&task_cons[dat]->fifo, 128, cons_fifo[dat], task_cons[dat]);
+//	}
 
 	//init mouse
 	sht_mouse = sheet_alloc(shtctl);
@@ -101,13 +104,13 @@ void HariMain(void)
 	my = (binfo->scrny - 28 - 16) / 2;
 
 	sheet_slide(sht_back, 0, 0);
-	sheet_slide(sht_cons[0], 56, 6);
-	sheet_slide(sht_cons[1], 8, 2);
+	sheet_slide(sht_cons[0], 32, 4);
+	//sheet_slide(sht_cons[1], 8, 2);
 	sheet_slide(sht_mouse, mx, my);
 	sheet_updown(sht_back, 0);
 	sheet_updown(sht_cons[0], 1);
-	sheet_updown(sht_cons[1], 2);
-	sheet_updown(sht_mouse, 4);
+//	sheet_updown(sht_cons[1], 2);
+	sheet_updown(sht_mouse, 2);
 	key_win = sht_cons[0];
 	keywin_on(key_win);
 
@@ -214,9 +217,17 @@ void HariMain(void)
 						cons_putstr0(task->cons, "\nBreak(by key)\n");
 						io_cli();
 						task->tss.eax = (int) &(task->tss.esp0);
-						task->tss.eip = (int)asm_end_app;
+						task->tss.eip = (int) asm_end_app;
 						io_sti();
 					}
+				}
+				if (dat == 256 + 0x3c && key_shift != 0 && sht_cons[1] == 0) {  //shift+F2, 打开控制台
+					sht_cons[1] = open_console(shtctl,memtotal);
+					sheet_slide(sht_cons[1],32,4);
+					sheet_updown(sht_cons[1],shtctl->top);
+					keywin_off(key_win);
+					key_win = sht_cons[1];
+					keywin_on(key_win);
 				}
 				if (dat == 256 + 0xfa) {	//键盘接收到了数据
 					keycmd_wait = -1;
@@ -271,7 +282,7 @@ void HariMain(void)
 												cons_putstr0(task->cons, "\nBreak (mouse):\n");
 												io_cli();
 												task->tss.eax = (int) &(task->tss.esp0);
-												task->tss.eip = (int)asm_end_app;
+												task->tss.eip = (int) asm_end_app;
 												io_sti();
 											}
 										}
@@ -284,7 +295,7 @@ void HariMain(void)
 						{
 							x = mx - mmx;
 							y = my - mmy;
-							new_wx = (mmx2 + x + 2)&~3;
+							new_wx = (mmx2 + x + 2) & ~3;
 							new_wy = new_wy + y;
 							//	sheet_slide(sht, (mmx2 + x + 2) & ~3, sht->ly + y);
 							mmy = my;
@@ -320,4 +331,31 @@ void keywin_on(SHEET *key_win)
 		fifo32_put(&key_win->task->fifo, 2); //命令行窗口光标on
 	}
 	return;
+}
+
+SHEET *open_console(SHEETCTL *shtctl, uint memtoal)
+{
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	SHEET *sht = sheet_alloc(shtctl);
+	uchar *buf = (uchar *) memman_alloc_4k(memman, 256 * 165);
+	TASK *task = task_alloc();
+	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
+	sheet_setbuf(sht, buf, 256, 165, -1); /*无透明色*/
+	make_window8(buf, 256, 165, "console", 0);
+	make_textbox8(sht, 8, 28, 240, 128, COL8_000000);
+	task->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;
+	task->tss.eip = (int) &console_task;
+	task->tss.es = 1 * 8;
+	task->tss.cs = 2 * 8;
+	task->tss.ss = 1 * 8;
+	task->tss.ds = 1 * 8;
+	task->tss.fs = 1 * 8;
+	task->tss.gs = 1 * 8;
+	*((int *) task->tss.esp + 4) = (int) sht;
+	*((int *) task->tss.esp + 8) = memtoal;
+	task_run(task, 2, 2);
+	sht->task = task;
+	sht->flags |= 0x20; /*有光标*/
+	fifo32_init(&task->fifo, 128, cons_fifo, task);
+	return sht;
 }
