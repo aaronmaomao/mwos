@@ -28,19 +28,19 @@ void keywin_on(SHEET *key_win);
 
 void HariMain(void)
 {
-	BOOTINFO *binfo = (BOOTINFO *) ADR_BOOTINFO;
+	BOOTINFO *binfo = (BOOTINFO *)ADR_BOOTINFO;
 	int fifobuf[128], keycmd_buf[32];
 	FIFO32 fifo_a, keycmd;
 	int mx, my, dat, key_shift = 0, key_leds = (binfo->leds >> 4) & 0x07, keycmd_wait = -1, *cons_fifo[2];
 	char temp[40];
 	MOUSE_DESCODE mdecode;
 	uint memtotal;
-	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
+	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 	SHEETCTL *shtctl;
 	SHEET *sht_back, *sht_mouse, *sht_cons[2], *sht = 0, *key_win;
 	uchar *buf_back, buf_mouse[16 * 16], *buf_cons[2];
 	TASK *task_m, *task_cons[2], *task;
-	int j, x, y, mmx = -1, mmy = -1, mmx2 = 0;
+	int j, x, y, mmx = -1, mmy = -1, mmx2 = 0, new_mx = -1, new_my = 0, new_wx = 0x7fffffff, new_wy = 0;
 
 	init_gdtidt();
 	init_pic();
@@ -61,10 +61,10 @@ void HariMain(void)
 	task_m = task_init(memman);
 	fifo_a.task = task_m;	//设置任务的fifo
 	task_run(task_m, 1, 2);
-	*((int *) 0x0fe4) = (int) shtctl;
+	*((int *)0x0fe4) = (int)shtctl;
 	//init screen
 	sht_back = sheet_alloc(shtctl);
-	buf_back = (uchar *) memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
+	buf_back = (uchar *)memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
 	sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);
 	init_screen8(buf_back, binfo->scrnx, binfo->scrny);
 
@@ -72,25 +72,25 @@ void HariMain(void)
 
 	for (dat = 0; dat < 2; dat++) {
 		sht_cons[dat] = sheet_alloc(shtctl);
-		buf_cons[dat] = (uchar *) memman_alloc_4k(memman, 256 * 165);
+		buf_cons[dat] = (uchar *)memman_alloc_4k(memman, 256 * 165);
 		sheet_setbuf(sht_cons[dat], buf_cons[dat], 256, 165, -1);
 		make_window8(buf_cons[dat], 256, 165, "console", 0);
 		make_textbox8(sht_cons[dat], 8, 28, 240, 128, COL8_000000);
 		task_cons[dat] = task_alloc();
 		task_cons[dat]->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;
-		task_cons[dat]->tss.eip = (int) &console_task;
+		task_cons[dat]->tss.eip = (int)&console_task;
 		task_cons[dat]->tss.es = 1 * 8;
 		task_cons[dat]->tss.cs = 2 * 8;
 		task_cons[dat]->tss.ss = 1 * 8;
 		task_cons[dat]->tss.ds = 1 * 8;
 		task_cons[dat]->tss.fs = 1 * 8;
 		task_cons[dat]->tss.gs = 1 * 8;
-		*((int *) (task_cons[dat]->tss.esp + 4)) = (int) sht_cons[dat];
-		*((int *) (task_cons[dat]->tss.esp + 8)) = memtotal;
+		*((int *)(task_cons[dat]->tss.esp + 4)) = (int)sht_cons[dat];
+		*((int *)(task_cons[dat]->tss.esp + 8)) = memtotal;
 		task_run(task_cons[dat], 2, 2);
 		sht_cons[dat]->task = task_cons[dat];
 		sht_cons[dat]->flags |= 0x20;	//0x20表示有光标
-		cons_fifo[dat] = (int *) memman_alloc_4k(memman, 128 * 4);
+		cons_fifo[dat] = (int *)memman_alloc_4k(memman, 128 * 4);
 		fifo32_init(&task_cons[dat]->fifo, 128, cons_fifo[dat], task_cons[dat]);
 	}
 
@@ -122,8 +122,20 @@ void HariMain(void)
 		}
 		io_cli();
 		if (fifo32_status(&fifo_a) == 0) {
-			task_sleep(task_m);
-			io_sti();
+			if (new_mx >= 0) {
+				io_sti();
+				sheet_slide(sht_mouse, new_mx, new_my);
+				new_mx = -1;
+			}
+			else if (new_wx != 0x7fffffff) {
+				io_sti();
+				sheet_slide(sht, new_wx, new_wy);
+				new_wx = 0x7fffffff;
+			}
+			else {
+				task_sleep(task_m);
+				io_sti();
+			}
 		}
 		else {
 			dat = fifo32_get(&fifo_a);
@@ -202,7 +214,7 @@ void HariMain(void)
 						cons_putstr0(task->cons, "\nBreak(by key)\n");
 						io_cli();
 						task->tss.eax = (int) &(task->tss.esp0);
-						task->tss.eip = (int) asm_end_app;
+						task->tss.eip = (int)asm_end_app;
 						io_sti();
 					}
 				}
@@ -230,7 +242,9 @@ void HariMain(void)
 					if (my > binfo->scrny - 1) {
 						my = binfo->scrny - 1;
 					}
-					sheet_slide(sht_mouse, mx, my);
+					//sheet_slide(sht_mouse, mx, my);
+					new_mx = mx;
+					new_my = my;
 					if ((mdecode.btn & 0x01) != 0) {	//左键按下
 						if (mmx < 0) {
 							for (j = shtctl->top - 1; j > 0; j--) {
@@ -248,6 +262,8 @@ void HariMain(void)
 										if (3 <= x && x < sht->xsize - 3 && 3 <= y && y < 21) { //移动窗口
 											mmx = mx;
 											mmy = my;
+											mmx2 = sht->lx;
+											new_wy = sht->ly;
 										}
 										if (sht->xsize - 21 <= x && x < sht->xsize - 5 && 5 <= y && y < 19) { //点击窗口关闭按钮
 											if ((sht->flags & 0x10) != 0) {
@@ -255,7 +271,7 @@ void HariMain(void)
 												cons_putstr0(task->cons, "\nBreak (mouse):\n");
 												io_cli();
 												task->tss.eax = (int) &(task->tss.esp0);
-												task->tss.eip = (int) asm_end_app;
+												task->tss.eip = (int)asm_end_app;
 												io_sti();
 											}
 										}
@@ -268,14 +284,19 @@ void HariMain(void)
 						{
 							x = mx - mmx;
 							y = my - mmy;
-							sheet_slide(sht, sht->lx + x, sht->ly + y);
-							mmx = mx;
+							new_wx = (mmx2 + x + 2)&~3;
+							new_wy = new_wy + y;
+							//	sheet_slide(sht, (mmx2 + x + 2) & ~3, sht->ly + y);
 							mmy = my;
 						}
 					}
-					else
+					else  //没有按下鼠标左键
 					{
 						mmx = -1;
+						if (new_wx != 0x7fffffff) {
+							sheet_slide(sht, new_wx, new_wy);  //固定图层的位置
+							new_wx = 0x7fffffff;
+						}
 					}
 				}
 			}

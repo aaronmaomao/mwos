@@ -7,20 +7,20 @@
 
 #include "bootpack.h"
 
-/**
- * 生成一个图层管理表
- */
+ /**
+  * 生成一个图层管理表
+  */
 SHEETCTL *sheetctl_init(MEMMAN *memman, uchar *vram, int xsize, int ysize)
 {
 	SHEETCTL *ctl;
 	int i;
-	ctl = (SHEETCTL *) memman_alloc_4k(memman, sizeof(SHEETCTL));
+	ctl = (SHEETCTL *)memman_alloc_4k(memman, sizeof(SHEETCTL));
 	if (ctl == 0) {
 		goto err;
 	}
-	ctl->map = (uchar *) memman_alloc_4k(memman, xsize * ysize);
+	ctl->map = (uchar *)memman_alloc_4k(memman, xsize * ysize);
 	if (ctl->map == 0) {
-		memman_free_4k(memman, (int) ctl, sizeof(SHEETCTL));
+		memman_free_4k(memman, (int)ctl, sizeof(SHEETCTL));
 		goto err;
 	}
 	ctl->vram = vram;
@@ -31,7 +31,7 @@ SHEETCTL *sheetctl_init(MEMMAN *memman, uchar *vram, int xsize, int ysize)
 		ctl->sheets[i].flags = 0;	//标记为未使用
 		ctl->sheets[i].ctl = ctl;
 	}
-	err: return ctl;
+err: return ctl;
 }
 
 #define SHEET_USE 1
@@ -143,7 +143,7 @@ void sheet_refresh(SHEET *sht, int vx0, int vy0, int vx1, int vy1)
  */
 void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zindex0, int zindex1)
 {
-	int index, bufy, bufx, ly, lx, tbufx0, tbufy0, tbufx1, tbufy1;
+	int index, bufy, bufx, ly, lx, tbufx0, tbufy0, tbufx1, tbufy1, tbufx2, sid4, i, i1, *p, *q, *r;
 	SHEET *sht;
 	uchar *buf, sid, *vram = ctl->vram, *map = ctl->map;
 	if (vx0 < 0) {
@@ -178,15 +178,65 @@ void sheet_refreshsub(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zin
 		if (tbufy1 > sht->ysize) {
 			tbufy1 = sht->ysize;
 		}
-		for (bufy = tbufy0; bufy < tbufy1; bufy++) {
-			ly = sht->ly + bufy;
-			for (bufx = tbufx0; bufx < tbufx1; bufx++) {
+
+		if ((sht->lx & 3) == 0) {  //4字节型
+			i = (tbufx0 + 3) / 4;  //小数进位
+			i1 = tbufx1 / 4;   //小数舍去
+			i1 = i1 - i;
+			sid4 = sid | sid << 8 | sid << 16 | sid << 24;
+			for (bufy = tbufy0; bufy < tbufy1; bufy++) {
+				ly = sht->ly + bufy;
+				for (bufx = tbufx0; bufx < tbufx1 && (bufx & 3) != 0; bufx++) {
+					lx = sht->lx + bufx;
+					if (map[ly * ctl->xsize + lx] == sid) {		//如果当前像素点包含在当前图层内，则刷新
+						vram[ly * ctl->xsize + lx] = buf[bufy * sht->xsize + bufx];	//把像素颜色放到显存对应位置处
+					}
+				}
 				lx = sht->lx + bufx;
-				if (map[ly * ctl->xsize + lx] == sid) {		//如果当前像素点包含在当前图层内，则刷新
-					vram[ly * ctl->xsize + lx] = buf[bufy * sht->xsize + bufx];	//把像素颜色放到显存对应位置处
+				p = (int *)&map[ly * ctl->xsize + lx];
+				q = (int *)&vram[ly * ctl->xsize + lx];
+				r = (int *)&buf[bufy * sht->xsize + bufx];
+				for (i = 0; i < i1; i++) {							/* 4の倍数部分 */
+					if (p[i] == sid4) {
+						q[i] = r[i];
+					}
+					else {
+						tbufx2 = bufx + i * 4;
+						lx = sht->lx + tbufx2;
+						if (map[ly * ctl->xsize + lx + 0] == sid) {
+							vram[ly * ctl->xsize + lx + 0] = buf[bufy * sht->xsize + tbufx2 + 0];
+						}
+						if (map[ly * ctl->xsize + lx + 1] == sid) {
+							vram[ly * ctl->xsize + lx + 1] = buf[bufy * sht->xsize + tbufx2 + 1];
+						}
+						if (map[ly * ctl->xsize + lx + 2] == sid) {
+							vram[ly * ctl->xsize + lx + 2] = buf[bufy * sht->xsize + tbufx2 + 2];
+						}
+						if (map[ly * ctl->xsize + lx + 3] == sid) {
+							vram[ly * ctl->xsize + lx + 3] = buf[bufy * sht->xsize + tbufx2 + 3];
+						}
+					}
+				}
+				for (bufx += i1 * 4; bufx < tbufx1; bufx++) {				/* 後ろの端数を1バイトずつ */
+					lx = sht->lx + bufx;
+					if (map[ly * ctl->xsize + lx] == sid) {
+						vram[ly * ctl->xsize + lx] = buf[bufy * sht->xsize + bufx];
+					}
 				}
 			}
 		}
+		else {    //1字节型
+			for (bufy = tbufy0; bufy < tbufy1; bufy++) {
+				ly = sht->ly + bufy;
+				for (bufx = tbufx0; bufx < tbufx1; bufx++) {
+					lx = sht->lx + bufx;
+					if (map[ly * ctl->xsize + lx] == sid) {
+						vram[ly * ctl->xsize + lx] = buf[bufy * sht->xsize + bufx];
+					}
+				}
+			}
+		}
+
 	}
 	return;
 }
@@ -233,16 +283,16 @@ void sheet_refreshmap(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zin
 				tbufx1 = (tbufx1 - tbufx0) / 4;	//4字节型
 				sid4 = sid | sid << 8 | sid << 16 | sid << 24;
 				for (bufy = tbufy0; bufy < tbufy1; bufy++) {
-					lx = sht->lx + bufx;
+					lx = sht->lx + tbufx0;
 					ly = sht->ly + bufy;
-					p = (int *) &map[ly * ctl->xsize + lx];
+					p = (int *)&map[ly * ctl->xsize + lx];
 					for (bufx = 0; bufx < tbufx1; bufx++) {
 						p[bufx] = sid4;
 					}
 				}
 			}
 			else {
-				for (bufy = tbufx0; bufy < tbufy1; buf++) {	//1字节型
+				for (bufy = tbufx0; bufy < tbufy1; bufy++) {	//1字节型
 					ly = sht->ly + bufy;
 					for (bufx = tbufx0; bufx < tbufx1; bufx++) {
 						lx = sht->lx + bufx;
