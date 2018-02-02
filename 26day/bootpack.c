@@ -73,30 +73,6 @@ void HariMain(void)
 	sht_cons[0] = open_console(shtctl, memtotal);
 	sht_cons[1] = 0;
 
-//	for (dat = 0; dat < 2; dat++) {
-//		sht_cons[dat] = sheet_alloc(shtctl);
-//		buf_cons[dat] = (uchar *) memman_alloc_4k(memman, 256 * 165);
-//		sheet_setbuf(sht_cons[dat], buf_cons[dat], 256, 165, -1);
-//		make_window8(buf_cons[dat], 256, 165, "console", 0);
-//		make_textbox8(sht_cons[dat], 8, 28, 240, 128, COL8_000000);
-//		task_cons[dat] = task_alloc();
-//		task_cons[dat]->tss.esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024 - 12;
-//		task_cons[dat]->tss.eip = (int) &console_task;
-//		task_cons[dat]->tss.es = 1 * 8;
-//		task_cons[dat]->tss.cs = 2 * 8;
-//		task_cons[dat]->tss.ss = 1 * 8;
-//		task_cons[dat]->tss.ds = 1 * 8;
-//		task_cons[dat]->tss.fs = 1 * 8;
-//		task_cons[dat]->tss.gs = 1 * 8;
-//		*((int *) (task_cons[dat]->tss.esp + 4)) = (int) sht_cons[dat];
-//		*((int *) (task_cons[dat]->tss.esp + 8)) = memtotal;
-//		task_run(task_cons[dat], 2, 2);
-//		sht_cons[dat]->task = task_cons[dat];
-//		sht_cons[dat]->flags |= 0x20;	//0x20表示有光标
-//		cons_fifo[dat] = (int *) memman_alloc_4k(memman, 128 * 4);
-//		fifo32_init(&task_cons[dat]->fifo, 128, cons_fifo[dat], task_cons[dat]);
-//	}
-
 	//init mouse
 	sht_mouse = sheet_alloc(shtctl);
 	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);
@@ -105,11 +81,9 @@ void HariMain(void)
 
 	sheet_slide(sht_back, 0, 0);
 	sheet_slide(sht_cons[0], 32, 4);
-	//sheet_slide(sht_cons[1], 8, 2);
 	sheet_slide(sht_mouse, mx, my);
 	sheet_updown(sht_back, 0);
 	sheet_updown(sht_cons[0], 1);
-//	sheet_updown(sht_cons[1], 2);
 	sheet_updown(sht_mouse, 2);
 	key_win = sht_cons[0];
 	keywin_on(key_win);
@@ -145,6 +119,7 @@ void HariMain(void)
 			io_sti();
 			if (key_win->flags == 0) {	//输入窗口已被关闭
 				key_win = shtctl->sheetseq[shtctl->top - 1];
+				keywin_on(key_win);
 			}
 			if (256 <= dat && dat <= 511) {		//键盘数据
 				if (dat < 0x80 + 256) {	//将按键编码转为字符编码
@@ -234,7 +209,7 @@ void HariMain(void)
 				}
 				if (dat == 256 + 0xfe) {	//键盘没有接收到数据，重发
 					wait_KBC_sendready();
-					io_out32(PORT_KEYDAT, keycmd_wait);
+					io_out8(PORT_KEYDAT, keycmd_wait);
 				}
 			}
 			else if (512 <= dat && dat <= 767) {	//鼠标数据
