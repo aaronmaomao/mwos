@@ -61,7 +61,7 @@ void console_task(SHEET *sht, uint memtotal)
 				cons.cur_c = COL8_FFFFFF;
 			}
 			if (dat == 3) {	//光标OFF
-				boxfill8(sht->buf, sht->xsize, COL8_000000, cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 16);
+				boxfill8(sht->buf, sht->xsize, COL8_000000, cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
 				cons.cur_c = -1;
 			}
 			if (256 <= dat && dat <= 511) {	//键盘数据

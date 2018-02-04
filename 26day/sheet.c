@@ -283,8 +283,8 @@ void sheet_refreshmap(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zin
 				tbufx1 = (tbufx1 - tbufx0) / 4;	//4字节型
 				sid4 = sid | sid << 8 | sid << 16 | sid << 24;
 				for (bufy = tbufy0; bufy < tbufy1; bufy++) {
-					lx = sht->lx + tbufx0;
 					ly = sht->ly + bufy;
+					lx = sht->lx + tbufx0;
 					p = (int *)&map[ly * ctl->xsize + lx];
 					for (bufx = 0; bufx < tbufx1; bufx++) {
 						p[bufx] = sid4;

@@ -52,13 +52,13 @@ void HariMain(void)
 	enable_mouse(&fifo_a, 512, &mdecode);
 	io_out8(PIC0_IMR, 0xf8); /* PIC1とキーボードを許可(11111000) */
 	io_out8(PIC1_IMR, 0xef); /* マウスを許可(11101111) */
+	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 	memtotal = memtest(0x00400000, 0xffffffff);	//获取最大可管理内存
 	memman_init(memman);
 	memman_free(memman, 0x004000000, memtotal - 0x00400000);	//将最大空闲内存放入管理表中
 
 	init_palette();
 	shtctl = sheetctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
-	init_mouse_cursor8(buf_mouse, 99);
 	task_m = task_init(memman);
 	fifo_a.task = task_m;	//设置任务的fifo
 	task_run(task_m, 1, 2);
@@ -76,6 +76,7 @@ void HariMain(void)
 	//init mouse
 	sht_mouse = sheet_alloc(shtctl);
 	sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);
+	init_mouse_cursor8(buf_mouse, 99);
 	mx = (binfo->scrnx - 16) / 2; /* 画面中央になるように座標計算 */
 	my = (binfo->scrny - 28 - 16) / 2;
 
@@ -88,7 +89,6 @@ void HariMain(void)
 	key_win = sht_cons[0];
 	keywin_on(key_win);
 
-	fifo32_init(&keycmd, 32, keycmd_buf, 0);
 	fifo32_put(&keycmd, KEYCMD_LED);
 	fifo32_put(&keycmd, key_leds);
 	for (;;) {
