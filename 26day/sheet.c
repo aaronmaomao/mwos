@@ -45,7 +45,7 @@ SHEET *sheet_alloc(SHEETCTL *ctl)
 	int i;
 	for (i = 0; i < MAX_SHEETS; i++) {
 		if (ctl->sheets[i].flags == 0) {
-			sheet = &(ctl->sheets[i]);	//取得空闲图层的地址
+			sheet = &ctl->sheets[i];	//取得空闲图层的地址
 			sheet->flags = SHEET_USE;	//标记为该图层正在使用
 			sheet->zindex = -1;	//隐藏
 			sheet->task = 0;
@@ -260,8 +260,8 @@ void sheet_refreshmap(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zin
 	}
 	for (index = zindex; index <= ctl->top; index++) {
 		sht = ctl->sheetseq[index];
-		buf = sht->buf;
 		sid = sht - ctl->sheets;	//得到的是 当前图层地址 基于图层数组的 地址增量
+		buf = sht->buf;
 		tbufx0 = vx0 - sht->lx;
 		tbufy0 = vy0 - sht->ly;
 		tbufx1 = vx1 - sht->lx;
@@ -292,7 +292,7 @@ void sheet_refreshmap(SHEETCTL *ctl, int vx0, int vy0, int vx1, int vy1, int zin
 				}
 			}
 			else {
-				for (bufy = tbufx0; bufy < tbufy1; bufy++) {	//1字节型
+				for (bufy = tbufy0; bufy < tbufy1; bufy++) {	//1字节型
 					ly = sht->ly + bufy;
 					for (bufx = tbufx0; bufx < tbufx1; bufx++) {
 						lx = sht->lx + bufx;

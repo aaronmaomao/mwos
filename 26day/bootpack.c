@@ -31,15 +31,15 @@ void HariMain(void)
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 	SHEETCTL *shtctl;
 	SHEET *sht_back, *sht_mouse, *sht = 0, *key_win;
-	uchar *buf_back, buf_mouse[16 * 16];
+	uchar *buf_back, buf_mouse[256];
 	TASK *task_m, *task;
 	int j, x, y, mmx = -1, mmy = -1, mmx2 = 0, new_mx = -1, new_my = 0, new_wx = 0x7fffffff, new_wy = 0;
-	*(((int *) 0x0fec)) = (int) &fifo;
 
 	init_gdtidt();
 	init_pic();
 	io_sti(); /* IDT/PICの初期化が終わったのでCPUの割り込み禁止を解除 */
 	fifo32_init(&fifo, 128, fifobuf, 0);
+	*(((int *) 0x0fec)) = (int) &fifo;
 	init_pit();
 	init_keyboard(&fifo, 256);	//鼠标键盘主任务共用一个fifo
 	enable_mouse(&fifo, 512, &mdecode);
@@ -321,8 +321,8 @@ SHEET *open_console(SHEETCTL *shtctl, uint memtoal)
 	task->tss.ds = 1 * 8;
 	task->tss.fs = 1 * 8;
 	task->tss.gs = 1 * 8;
-	*((int *) task->tss.esp + 4) = (int) sht;
-	*((int *) task->tss.esp + 8) = memtoal;
+	*((int *) (task->tss.esp + 4)) = (int) sht;
+	*((int *) (task->tss.esp + 8)) = memtoal;
 	task_run(task, 2, 2);
 	sht->task = task;
 	sht->flags |= 0x20; /*有光标*/
