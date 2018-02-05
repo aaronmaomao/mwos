@@ -302,7 +302,7 @@ typedef struct TASK {
 	FIFO32 fifo;
 	TSS32 tss;
 	struct CONSOLE *cons;
-	int ds_base;
+	int ds_base, cons_stack;
 } TASK;
 
 typedef struct TASKLEVEL {
@@ -351,6 +351,7 @@ void cons_putchar(CONSOLE *cons, int chr, char move);
 void cmd_mem(CONSOLE *cons, uint memtotal);
 void cmd_cls(CONSOLE *cons);
 void cmd_dir(CONSOLE *cons);
+void cmd_exit(CONSOLE *cons, int *fat);
 void cmd_type(CONSOLE *cons, int *fat, char *cmdLine);
 int cmd_app(CONSOLE *cons, int *fat, char *cmdline);
 void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal);

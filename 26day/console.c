@@ -17,8 +17,8 @@ void console_task(SHEET *sht, uint memtotal)
 	char cmdLine[30];
 	CONSOLE cons;
 	int dat;
-	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
-	int *fat = (int *)memman_alloc_4k(memman, 4 * 2880);
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	int *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
 	cons.cur_x = 8;
 	cons.cur_y = 28;
 	cons.cur_c = -1;
@@ -30,7 +30,7 @@ void console_task(SHEET *sht, uint memtotal)
 	timer_init(cons.timer, &task->fifo, 1);
 	timer_settime(cons.timer, 50);
 
-	file_readfat(fat, (uchar *)(ADR_DISKIMG + 0x000200));
+	file_readfat(fat, (uchar *) (ADR_DISKIMG + 0x000200));
 	cons_putchar(&cons, '>', 1);
 
 	for (;;) {
@@ -38,8 +38,7 @@ void console_task(SHEET *sht, uint memtotal)
 		if (fifo32_status(&task->fifo) == 0) {
 			task_sleep(task);
 			io_sti();
-		}
-		else {
+		} else {
 			dat = fifo32_get(&task->fifo);
 			io_sti();
 			if (dat <= 1) {	//光标闪烁
@@ -48,8 +47,7 @@ void console_task(SHEET *sht, uint memtotal)
 					if (cons.cur_c >= 0) {
 						cons.cur_c = COL8_FFFFFF;
 					}
-				}
-				else {
+				} else {
 					timer_init(cons.timer, &task->fifo, 1);
 					if (cons.cur_c >= 0) {
 						cons.cur_c = COL8_000000;
@@ -70,15 +68,13 @@ void console_task(SHEET *sht, uint memtotal)
 						cons_putchar(&cons, ' ', 0);
 						cons.cur_x -= 8;
 					}
-				}
-				else if (dat == 10 + 256) {	//回车键
+				} else if (dat == 10 + 256) {	//回车键
 					cons_putchar(&cons, ' ', 0);
 					cmdLine[cons.cur_x / 8 - 2] = 0;	//0表示命令结束
 					cons_newline(&cons);	//换行
 					cons_runcmd(cmdLine, &cons, fat, memtotal);
 					cons_putchar(&cons, '>', 1);
-				}
-				else {	//普通字符
+				} else {	//普通字符
 					if (cons.cur_x < 240) {
 						cmdLine[cons.cur_x / 8 - 2] = dat - 256;	//将字符保存到cmdLine中
 						cons_putchar(&cons, dat - 256, 1);
@@ -98,17 +94,15 @@ void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal)
 	/* mem命令 */
 	if (strcmp(cmdLine, "mem") == 0) {
 		cmd_mem(cons, memtotal);
-	}
-	else if (strcmp(cmdLine, "cls") == 0) {	//cls命令
+	} else if (strcmp(cmdLine, "cls") == 0) {	//cls命令
 		cmd_cls(cons);
-	}
-	else if (strcmp(cmdLine, "dir") == 0) {	//dir命令
+	} else if (strcmp(cmdLine, "dir") == 0) {	//dir命令
 		cmd_dir(cons);
-	}
-	else if (strncmp(cmdLine, "type ", 5) == 0) {	//type 命令（有参数：文件名.扩展名）
+	} else if (strncmp(cmdLine, "type ", 5) == 0) {	//type 命令（有参数：文件名.扩展名）
 		cmd_type(cons, fat, cmdLine);
-	}
-	else if (cmdLine[0] != 0) {
+	} else if (strcmp(cmdLine, "exit") == 0) {	//退出命令
+		cmd_exit(cons, fat);
+	} else if (cmdLine[0] != 0) {
 		if (cmd_app(cons, fat, cmdLine) == 0) { //不是命令也不是应用程序
 			cons_putstr0(cons, "Unknow command.\n\n");
 		}
@@ -123,8 +117,8 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 	char name[18];
 	int i, segsize, datsize, esp, dathrb;
 	FILEINFO *fileinfo;
-	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
-	SEGMENT_DESC *gdt = (SEGMENT_DESC *)ADR_GDT;
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	SEGMENT_DESC *gdt = (SEGMENT_DESC *) ADR_GDT;
 	TASK *task = task_now();
 	SHEETCTL *shtctl;
 	SHEET *sht;
@@ -136,24 +130,24 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 		name[i] = cmdLine[i];
 	}
 	name[i] = 0;
-	fileinfo = file_search(name, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224); //不加后缀名查找
+	fileinfo = file_search(name, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224); //不加后缀名查找
 	if (fileinfo == 0 && name[i - 1] != '.') {
 		name[i] = '.';
 		name[i + 1] = 'M';
 		name[i + 2] = 'W';
 		name[i + 3] = 'E';
 		name[i + 4] = 0;
-		fileinfo = file_search(name, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);  //加上后缀名重新查找
+		fileinfo = file_search(name, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);  //加上后缀名重新查找
 	}
 	if (fileinfo != 0) {
-		p = (char *)memman_alloc_4k(memman, fileinfo->size);
-		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *)(ADR_DISKIMG + 0x003e00));
+		p = (char *) memman_alloc_4k(memman, fileinfo->size);
+		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
 		if (fileinfo->size >= 36 && strncmp(p + 4, "Hari", 4) == 0 && *p == 0) {
-			segsize = *((int *)(p + 0x0000));	//数据区（包括ss和ds）大小
-			esp = *((int *)(p + 0x000c));	//esp寄存器的初始值()
-			datsize = *((int *)(p + 0x0010));	//向数据段传送的部分的字节数（即“helloworld”的大小）
-			dathrb = *((int *)(p + 0x0014));	//向数据段传送的的部分在hrb中的位置（即“helloworld”的偏移地址）
-			q = (char *)memman_alloc_4k(memman, segsize);
+			segsize = *((int *) (p + 0x0000));	//数据区（包括ss和ds）大小
+			esp = *((int *) (p + 0x000c));	//esp寄存器的初始值()
+			datsize = *((int *) (p + 0x0010));	//向数据段传送的部分的字节数（即“helloworld”的大小）
+			dathrb = *((int *) (p + 0x0014));	//向数据段传送的的部分在hrb中的位置（即“helloworld”的偏移地址）
+			q = (char *) memman_alloc_4k(memman, segsize);
 			//*((int *)0x0fe8) = (int)q;	//把数据段的地址存起来
 			task->ds_base = (int) q;
 			set_segmdesc(gdt + task->sel / 8 + 1000, fileinfo->size - 1, (int) p, AR_CODE32_ER + 0x60);	//代码段：注：0x60意思是这个段是应用程序用
@@ -162,7 +156,7 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 				q[esp + i] = p[dathrb + i];
 			}
 			start_app(0x1b, task->sel + 1000 * 8, esp, task->sel + 2000 * 8, &(task->tss.esp0));
-			shtctl = (SHEETCTL *)*((int *)0x0fe4);
+			shtctl = (SHEETCTL *) *((int *) 0x0fe4);
 			for (i = 0; i < MAX_SHEETS; i++) {
 				sht = &(shtctl->sheets[i]);
 				if ((sht->flags & 0x11) == 0x11 && sht->task == task) {
@@ -170,12 +164,11 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 				}
 			}
 			timer_cancelall(&task->fifo);
-			memman_free_4k(memman, (int)q, segsize);
-		}
-		else {
+			memman_free_4k(memman, (int) q, segsize);
+		} else {
 			cons_putstr0(cons, "This is not an Executable file");
 		}
-		memman_free_4k(memman, (int)p, fileinfo->size);
+		memman_free_4k(memman, (int) p, fileinfo->size);
 		cons_newline(cons);
 		return 1;
 	}
@@ -186,20 +179,38 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 void cmd_type(CONSOLE *cons, int *fat, char *cmdLine)
 {
 	char *p;
-	FILEINFO *fileinfo = file_search(cmdLine + 5, (FILEINFO *)(ADR_DISKIMG + 0x002600), 224);
-	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
+	FILEINFO *fileinfo = file_search(cmdLine + 5, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 
 	if (fileinfo != 0) {
-		p = (char *)memman_alloc_4k(memman, fileinfo->size);
-		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *)(ADR_DISKIMG + 0x003e00));
+		p = (char *) memman_alloc_4k(memman, fileinfo->size);
+		file_loadfile(fileinfo->clustno, fileinfo->size, p, fat, (char *) (ADR_DISKIMG + 0x003e00));
 		cons_putstr1(cons, p, fileinfo->size);
-		memman_free_4k(memman, (int)p, fileinfo->size);
-	}
-	else {	//没找到
+		memman_free_4k(memman, (int) p, fileinfo->size);
+	} else {	//没找到
 		cons_putstr0(cons, "File not found.\n");
 	}
 	cons_newline(cons);
 	return;
+}
+
+/**
+ * 退出命令
+ */
+void cmd_exit(CONSOLE *cons, int *fat)
+{
+	MEMMAN *man = (MEMMAN *) MEMMAN_ADDR;
+	TASK *task = task_now();
+	SHEETCTL *shtctl = (SHEETCTL *) *((int *) 0x0fe4);
+	FIFO32 *fifo = (FIFO32 *) *((int *) 0x0fec); //主任务的fifo
+	timer_cancel(cons->timer);
+	memman_free_4k(man, (int) fat, 4 * 2880);
+	io_cli();
+	fifo32_put(fifo, cons->sht - shtctl->sheets + 768);	//让主任务进行关闭操作
+	io_sti();
+	for (;;) {
+		task_sleep(task);
+	}
 }
 
 /* dir 命令 */
@@ -207,7 +218,7 @@ void cmd_dir(CONSOLE *cons)
 {
 	int i, j;
 	char temp[30];
-	FILEINFO *fileinfo = (FILEINFO *)(ADR_DISKIMG + 0x002600);
+	FILEINFO *fileinfo = (FILEINFO *) (ADR_DISKIMG + 0x002600);
 	for (i = 0; i < 224; i++) {
 		if (fileinfo[i].name[0] == 0x00) {	//0x00表示啥也没有
 			break;
@@ -247,7 +258,7 @@ void cmd_cls(CONSOLE *cons)
 void cmd_mem(CONSOLE *cons, uint memtotal)
 {
 	char temp[60];
-	MEMMAN *memman = (MEMMAN *)MEMMAN_ADDR;
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 	sprintf(temp, "total %dMB\nfree %dKB", memtotal / (1024 * 1024), memman_total(memman) / 1024);
 	cons_putstr0(cons, temp);
 	cons_newline(cons);
@@ -291,14 +302,11 @@ void cons_putchar(CONSOLE *cons, int chr, char move)
 				break;	//被32整除则跳出，即为4个空格的倍数
 			}
 		}
-	}
-	else if (temp[0] == 0x0a) {	//换行符
+	} else if (temp[0] == 0x0a) {	//换行符
 		cons_newline(cons);
-	}
-	else if (temp[0] == 0x0d) {	//回车符
+	} else if (temp[0] == 0x0d) {	//回车符
 
-	}
-	else {	//一般字符
+	} else {	//一般字符
 		putfonts8_asc_sht(cons->sht, cons->cur_x, cons->cur_y, COL8_FFFFFF, COL8_000000, temp, 1);
 		if (move != 0) {
 			cons->cur_x += 8;
@@ -321,8 +329,7 @@ void cons_newline(CONSOLE *cons)
 	int x, y;
 	if (cons->cur_y < 28 + 112) {	//不是最下面
 		cons->cur_y += 16;
-	}
-	else {	//是最下面，需要滚动
+	} else {	//是最下面，需要滚动
 		for (y = 28; y < 28 + 112; y++) {	//将所有颜色上移一行
 			for (x = 8; x < 8 + 240; x++) {
 				cons->sht->buf[x + y * cons->sht->xsize] = cons->sht->buf[x + (y + 16) * cons->sht->xsize];
@@ -349,89 +356,74 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	//int ds_base = *((int *)0x0fe8);	//应用程序的数据段
 	CONSOLE *cons = task->cons;
 	int ds_base = task->ds_base;
-	SHEETCTL *shtctl = (SHEETCTL *) *((int *)0x0fe4);
+	SHEETCTL *shtctl = (SHEETCTL *) *((int *) 0x0fe4);
 	SHEET *sht;
 	int *reg = &eax + 1;
 	int dat;
 	if (edx == 1) {
 		cons_putchar(cons, eax & 0xff, 1);
-	}
-	else if (edx == 2) {
-		cons_putstr0(cons, (char *)ebx + ds_base);
-	}
-	else if (edx == 3) {
-		cons_putstr1(cons, (char *)ebx + ds_base, ecx);
-	}
-	else if (edx == 4) {	//结束应用程序的api
+	} else if (edx == 2) {
+		cons_putstr0(cons, (char *) ebx + ds_base);
+	} else if (edx == 3) {
+		cons_putstr1(cons, (char *) ebx + ds_base, ecx);
+	} else if (edx == 4) {	//结束应用程序的api
 		return &(task->tss.esp0);
-	}
-	else if (edx == 5) {
+	} else if (edx == 5) {
 		sht = sheet_alloc(shtctl);
 		sht->task = task;
 		sht->flags |= 0x10;
-		sheet_setbuf(sht, (char *)ebx + ds_base, esi, edi, eax);
-		make_window8((char *)ebx + ds_base, esi, edi, (char *)ecx + ds_base, 0);
+		sheet_setbuf(sht, (char *) ebx + ds_base, esi, edi, eax);
+		make_window8((char *) ebx + ds_base, esi, edi, (char *) ecx + ds_base, 0);
 		sheet_slide(sht, ((shtctl->xsize - esi) / 2) & ~3, (shtctl->ysize - edi) / 2);
 		sheet_updown(sht, shtctl->top);
-		reg[7] = (int)sht;
-	}
-	else if (edx == 6) {
-		sht = (SHEET *)(ebx & 0xfffffffe);
-		putfonts8_asc(sht->buf, sht->xsize, esi, edi, eax, (char *)ebp + ds_base);
+		reg[7] = (int) sht;
+	} else if (edx == 6) {
+		sht = (SHEET *) (ebx & 0xfffffffe);
+		putfonts8_asc(sht->buf, sht->xsize, esi, edi, eax, (char *) ebp + ds_base);
 		if ((ebx & 1) == 0) {  //偶地址即为真实的地址
 			sheet_refresh(sht, esi, edi, esi + ecx * 8, edi + 16);
 		}
-	}
-	else if (edx == 7) {
-		sht = (SHEET *)(ebx & 0xfffffffe);
+	} else if (edx == 7) {
+		sht = (SHEET *) (ebx & 0xfffffffe);
 		boxfill8(sht->buf, sht->xsize, ebp, eax, ecx, esi, edi);
 		if ((ebx & 1) == 0) {
 			sheet_refresh(sht, eax, ecx, esi + 1, edi + 1);
 		}
-	}
-	else if (edx == 8) {  //初始化应用程序的memman
-		memman_init((MEMMAN *)(ebx + ds_base));
+	} else if (edx == 8) {  //初始化应用程序的memman
+		memman_init((MEMMAN *) (ebx + ds_base));
 		ecx &= 0xfffffff0;  //以16字节取整
-		memman_free((MEMMAN *)(ebx + ds_base), eax, ecx);
-	}
-	else if (edx == 9) {  //应用程序的malloc
+		memman_free((MEMMAN *) (ebx + ds_base), eax, ecx);
+	} else if (edx == 9) {  //应用程序的malloc
 		ecx = (ecx + 0x0f) & 0xfffffff0;
-		reg[7] = memman_alloc((MEMMAN *)(ebx + ds_base), ecx);
-	}
-	else if (edx == 10) {  //应用程序的free
+		reg[7] = memman_alloc((MEMMAN *) (ebx + ds_base), ecx);
+	} else if (edx == 10) {  //应用程序的free
 		ecx = (ecx + 0x0f) & 0xfffffff0;
-		memman_free((MEMMAN *)(ebx + ds_base), eax, ecx);
-	}
-	else if (edx == 11) {  //在窗口上画点
-		sht = (SHEET *)(ebx & 0xfffffffe);
-		sht->buf[sht->xsize*edi + esi] = eax;
+		memman_free((MEMMAN *) (ebx + ds_base), eax, ecx);
+	} else if (edx == 11) {  //在窗口上画点
+		sht = (SHEET *) (ebx & 0xfffffffe);
+		sht->buf[sht->xsize * edi + esi] = eax;
 		if ((ebx & 1) == 0) {
 			sheet_refresh(sht, esi, edi, esi + 1, edi + 1);
 		}
-	}
-	else if (edx == 12) //刷新图层
-	{
-		sht = (SHEET *)ebx;
+	} else if (edx == 12) //刷新图层
+			{
+		sht = (SHEET *) ebx;
 		sheet_refresh(sht, eax, ecx, esi, edi);
-	}
-	else if (edx == 13) {  //画直线
-		sht = (SHEET *)(ebx & 0xfffffffe);
+	} else if (edx == 13) {  //画直线
+		sht = (SHEET *) (ebx & 0xfffffffe);
 		mw_api_linewin(sht, eax, ecx, esi, edi, ebp);
 		if ((ebx & 1) == 0) {
 			sheet_refresh(sht, esi, edi, esi + 1, edi + 1);
 		}
-	}
-	else if (edx == 14) {  //关闭窗口
-		sheet_free((SHEET *)ebx);
-	}
-	else if (edx == 15) {  //获取按键值（1：阻塞，0：非阻塞）
+	} else if (edx == 14) {  //关闭窗口
+		sheet_free((SHEET *) ebx);
+	} else if (edx == 15) {  //获取按键值（1：阻塞，0：非阻塞）
 		for (;;) {
 			io_cli();
 			if (fifo32_status(&task->fifo) == 0) {
 				if (eax != 0) {
 					task_sleep(task);
-				}
-				else {
+				} else {
 					io_sti();
 					reg[7] = -1;
 					return 0;
@@ -443,10 +435,10 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 				timer_init(cons->timer, &task->fifo, 1); //运行应用程序时不需要闪烁光标，所以总是1
 				timer_settime(cons->timer, 50);
 			}
-			if (dat == 2) {	/* 光标ON */
+			if (dat == 2) { /* 光标ON */
 				cons->cur_c = COL8_FFFFFF;
 			}
-			if (dat == 3) {	/* 光标OFF */
+			if (dat == 3) { /* 光标OFF */
 				cons->cur_c = -1;
 			}
 			if (256 <= dat) { /* 键盘数据 */
@@ -454,26 +446,20 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 				return 0;
 			}
 		}
-	}
-	else if (edx == 16) {  //申请定时器
-		reg[7] = (int)timer_alloc();
-		((TIMER *)(reg[7]))->flags2 = 1;  //表示此定时器是app申请的
-	}
-	else if (edx == 17) {  //初始化定时器
-		timer_init((TIMER *)ebx, &task->fifo, eax + 256);
-	}
-	else if (edx == 18) {  //设置定时器
-		timer_settime((TIMER *)ebx, eax);
-	}
-	else if (edx == 19) {  //释放定时器
-		timer_free((TIMER *)ebx);
-	}
-	else if (edx == 20) { //蜂鸣器发声
+	} else if (edx == 16) {  //申请定时器
+		reg[7] = (int) timer_alloc();
+		((TIMER *) (reg[7]))->flags2 = 1;  //表示此定时器是app申请的
+	} else if (edx == 17) {  //初始化定时器
+		timer_init((TIMER *) ebx, &task->fifo, eax + 256);
+	} else if (edx == 18) {  //设置定时器
+		timer_settime((TIMER *) ebx, eax);
+	} else if (edx == 19) {  //释放定时器
+		timer_free((TIMER *) ebx);
+	} else if (edx == 20) { //蜂鸣器发声
 		if (eax == 0) { //频率为0，停止发声
 			dat = io_in8(0x61);
 			io_out8(0x61, dat & 0x0d);
-		}
-		else {
+		} else {
 			dat = 1193180000 / eax;  //1193180000是PIT芯片组的频率，与处理器无关
 			io_out8(0x43, 0xb6);
 			io_out8(0x42, dat & 0xff);
@@ -486,7 +472,8 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 }
 
 /* 在win上画直线 */
-void mw_api_linewin(SHEET *sht, int x0, int y0, int x1, int y1, int col) {
+void mw_api_linewin(SHEET *sht, int x0, int y0, int x1, int y1, int col)
+{
 	int i, x, y, len, dx, dy;
 	dx = x1 - x0;
 	dy = y1 - y0;
@@ -502,29 +489,24 @@ void mw_api_linewin(SHEET *sht, int x0, int y0, int x1, int y1, int col) {
 		len = dx + 1;
 		if (x0 > x1) {
 			dx = -1024;
-		}
-		else {
+		} else {
 			dx = 1024;
 		}
 		if (y0 <= y1) {
 			dy = ((y1 - y0 + 1) << 10) / len;
-		}
-		else {
+		} else {
 			dy = ((y1 - y0 - 1) << 10) / len;
 		}
-	}
-	else {
+	} else {
 		len = dy + 1;
 		if (y0 > y1) {
 			dy = -1024;
-		}
-		else {
+		} else {
 			dy = 1024;
 		}
 		if (x0 <= x1) {
 			dx = ((x1 - x0 + 1) << 10) / len;
-		}
-		else {
+		} else {
 			dx = ((x1 - x0 - 1) << 10) / len;
 		}
 	}
