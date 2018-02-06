@@ -16,6 +16,7 @@ static char keytable1[0x80] = { 0, 0, '!', '@', '#', '$', '%', '^', '&', '*', '(
 void keywin_off(SHEET *key_win);
 void keywin_on(SHEET *key_win);
 SHEET *open_console(SHEETCTL *shtctl, uint memtoal);
+TASK *open_constask(SHEET *sht, uint memtotal);
 void close_constask(TASK *task);
 void close_console(SHEET *sht);
 
@@ -242,14 +243,14 @@ void HariMain(void)
 											new_wy = sht->ly;
 										}
 										if (sht->xsize - 21 <= x && x < sht->xsize - 5 && 5 <= y && y < 19) { //点击窗口关闭按钮
-											if ((sht->flags & 0x10) != 0) {
+											if ((sht->flags & 0x10) != 0) {		//应用程序窗口
 												task = sht->task;
 												cons_putstr0(task->cons, "\nBreak (mouse):\n");
 												io_cli();
 												task->tss.eax = (int) &(task->tss.esp0);
 												task->tss.eip = (int) asm_end_app;
 												io_sti();
-											} else {
+											} else {	//console窗口
 												task = sht->task;
 												io_cli();
 												fifo32_put(&task->fifo, 4);
@@ -279,6 +280,8 @@ void HariMain(void)
 				}
 			} else if (768 <= dat && dat <= 1023) {  //命令行窗口关闭消息
 				close_console(shtctl->sheets + (dat - 768));
+			} else if (1024 <= dat && dat <= 2023) {	//关闭没有sht的console和任务
+				close_constask(taskctl->task + (dat - 1024));
 			}
 		}
 	}
@@ -302,16 +305,24 @@ void keywin_on(SHEET *key_win)
 	return;
 }
 
-SHEET *open_console(SHEETCTL *shtctl, uint memtoal)
+SHEET *open_console(SHEETCTL *shtctl, uint memtotal)
 {
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 	SHEET *sht = sheet_alloc(shtctl);
 	uchar *buf = (uchar *) memman_alloc_4k(memman, 256 * 165);
-	TASK *task = task_alloc();
-	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
 	sheet_setbuf(sht, buf, 256, 165, -1); /*无透明色*/
 	make_window8(buf, 256, 165, "console", 0);
 	make_textbox8(sht, 8, 28, 240, 128, COL8_000000);
+	sht->task = open_constask(sht, memtotal);
+	sht->flags |= 0x20; /*有光标*/
+	return sht;
+}
+
+TASK *open_constask(SHEET *sht, uint memtotal)
+{
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	TASK *task = task_alloc();
+	int *cons_fifo = (int *) memman_alloc_4k(memman, 128 * 4);
 	task->cons_stack = memman_alloc_4k(memman, 64 * 1024); //任务的栈内存
 	task->tss.esp = task->cons_stack + 64 * 1024 - 12;
 	task->tss.eip = (int) &console_task;
@@ -322,12 +333,10 @@ SHEET *open_console(SHEETCTL *shtctl, uint memtoal)
 	task->tss.fs = 1 * 8;
 	task->tss.gs = 1 * 8;
 	*((int *) (task->tss.esp + 4)) = (int) sht;
-	*((int *) (task->tss.esp + 8)) = memtoal;
+	*((int *) (task->tss.esp + 8)) = memtotal;
 	task_run(task, 2, 2);
-	sht->task = task;
-	sht->flags |= 0x20; /*有光标*/
 	fifo32_init(&task->fifo, 128, cons_fifo, task);
-	return sht;
+	return task;
 }
 
 /**

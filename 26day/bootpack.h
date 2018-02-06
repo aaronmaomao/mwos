@@ -285,6 +285,7 @@ void inthandler20(int *esp);
 #define TASK_BGDT	3	//从GDT的几号开始分配给TSS
 #define MAX_TASKS_LV	100	//每一级最多有100个任务
 #define MAX_TASKLEVELS	10	//最多有10级
+extern struct TASKCTL *taskctl;
 /*
  *  task status segment
  * 	note：TSS也是内存段的一种，在切换任务时会保存当前任务的状态，读取要切换的任务的状态
@@ -352,6 +353,7 @@ void cmd_mem(CONSOLE *cons, uint memtotal);
 void cmd_cls(CONSOLE *cons);
 void cmd_dir(CONSOLE *cons);
 void cmd_exit(CONSOLE *cons, int *fat);
+void cmd_ncst(CONSOLE *cons, char *cmd, int memtotal);
 void cmd_type(CONSOLE *cons, int *fat, char *cmdLine);
 int cmd_app(CONSOLE *cons, int *fat, char *cmdline);
 void cons_runcmd(char *cmdLine, CONSOLE *cons, int *fat, uint memtotal);
