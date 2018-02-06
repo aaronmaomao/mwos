@@ -11,7 +11,6 @@
 
 void mw_api_linewin(SHEET *sht, int x0, int y0, int x1, int y1, int col);
 
-
 void console_task(SHEET *sht, uint memtotal)
 {
 	TASK *task = task_now();
@@ -30,7 +29,6 @@ void console_task(SHEET *sht, uint memtotal)
 		timer_init(cons.timer, &task->fifo, 1);
 		timer_settime(cons.timer, 50);
 	}
-
 	file_readfat(fat, (uchar *) (ADR_DISKIMG + 0x000200));
 	cons_putchar(&cons, '>', 1);
 
@@ -42,7 +40,7 @@ void console_task(SHEET *sht, uint memtotal)
 		} else {
 			dat = fifo32_get(&task->fifo);
 			io_sti();
-			if (dat <= 1) {	//光标闪烁
+			if (dat <= 1 && cons.sht != 0) {	//光标闪烁
 				if (dat != 0) {
 					timer_init(cons.timer, &task->fifo, 0);
 					if (cons.cur_c >= 0) {
@@ -60,7 +58,9 @@ void console_task(SHEET *sht, uint memtotal)
 				cons.cur_c = COL8_FFFFFF;
 			}
 			if (dat == 3) {	//光标OFF
-				boxfill8(sht->buf, sht->xsize, COL8_000000, cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
+				if (cons.sht != 0) {
+					boxfill8(cons.sht->buf, cons.sht->xsize, COL8_000000, cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
+				}
 				cons.cur_c = -1;
 			}
 			if (dat == 4) {	//点击“X”关闭console
@@ -77,7 +77,7 @@ void console_task(SHEET *sht, uint memtotal)
 					cmdLine[cons.cur_x / 8 - 2] = 0;	//0表示命令结束
 					cons_newline(&cons);	//换行
 					cons_runcmd(cmdLine, &cons, fat, memtotal);
-					if (sht == 0) {		//如果这个console没有窗体，命令执行完自动终止
+					if (cons.sht == 0) {		//如果这个console没有窗体，命令执行完自动终止
 						cmd_exit(&cons, fat);
 					}
 					cons_putchar(&cons, '>', 1);
@@ -88,11 +88,11 @@ void console_task(SHEET *sht, uint memtotal)
 					}
 				}
 			}
-			if (sht != 0) {	//重新显示光标
+			if (cons.sht != 0) {	//重新显示光标
 				if (cons.cur_c >= 0) {
-					boxfill8(sht->buf, sht->xsize, cons.cur_c, cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
+					boxfill8(cons.sht->buf, cons.sht->xsize, cons.cur_c, cons.cur_x, cons.cur_y, cons.cur_x + 7, cons.cur_y + 15);
 				}
-				sheet_refresh(sht, cons.cur_x, cons.cur_y, cons.cur_x + 8, cons.cur_y + 16);
+				sheet_refresh(cons.sht, cons.cur_x, cons.cur_y, cons.cur_x + 8, cons.cur_y + 16);
 			}
 		}
 	}
@@ -405,11 +405,10 @@ void cons_newline(CONSOLE *cons)
 int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int eax)
 {
 	TASK *task = task_now();
-	//CONSOLE *cons = (CONSOLE *) *((int *)0x0fec);
-	//int ds_base = *((int *)0x0fe8);	//应用程序的数据段
 	CONSOLE *cons = task->cons;
 	int ds_base = task->ds_base;
 	SHEETCTL *shtctl = (SHEETCTL *) *((int *) 0x0fe4);
+	FIFO32 *sys_fifo = (FIFO32 *) *((int *) 0x0fec);
 	SHEET *sht;
 	int *reg = &eax + 1;
 	int dat;
@@ -492,6 +491,13 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			}
 			if (dat == 3) { /* 光标OFF */
 				cons->cur_c = -1;
+			}
+			if (dat == 4) {	//只关闭命令行窗口
+				timer_cancel(cons->timer);
+				io_cli();
+				fifo32_put(sys_fifo, cons->sht - shtctl->sheets + 2024); //2024~2279
+				cons->sht = 0;
+				io_sti();
 			}
 			if (256 <= dat) { /* 键盘数据 */
 				reg[7] = dat - 256;

@@ -31,7 +31,7 @@ void HariMain(void)
 	uint memtotal;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;	//初始化内存空闲表的地址（注：表大小为32K）
 	SHEETCTL *shtctl;
-	SHEET *sht_back, *sht_mouse, *sht = 0, *key_win;
+	SHEET *sht_back, *sht_mouse, *sht = 0, *key_win, *sht2;
 	uchar *buf_back, buf_mouse[256];
 	TASK *task_m, *task;
 	int j, x, y, mmx = -1, mmy = -1, mmx2 = 0, new_mx = -1, new_my = 0, new_wx = 0x7fffffff, new_wy = 0;
@@ -185,6 +185,7 @@ void HariMain(void)
 						task->tss.eax = (int) &(task->tss.esp0);
 						task->tss.eip = (int) asm_end_app;
 						io_sti();
+						task_run(task, -1, 0);	//确保任务能够运行到结束代码，所以要唤醒
 					}
 				}
 				if (dat == 256 + 0x3c && key_shift != 0) {  //shift+F2, 打开控制台
@@ -242,7 +243,7 @@ void HariMain(void)
 											mmx2 = sht->lx;
 											new_wy = sht->ly;
 										}
-										if (sht->xsize - 21 <= x && x < sht->xsize - 5 && 5 <= y && y < 19) { //点击窗口关闭按钮
+										if (sht->xsize - 21 <= x && x < sht->xsize - 5 && 5 <= y && y < 19) { //点击窗口“X”按钮
 											if ((sht->flags & 0x10) != 0) {		//应用程序窗口
 												task = sht->task;
 												cons_putstr0(task->cons, "\nBreak (mouse):\n");
@@ -250,8 +251,13 @@ void HariMain(void)
 												task->tss.eax = (int) &(task->tss.esp0);
 												task->tss.eip = (int) asm_end_app;
 												io_sti();
+												task_run(task, -1, 0);
 											} else {	//console窗口
 												task = sht->task;
+												sheet_updown(sht, -1);
+												keywin_off(sht);
+												key_win = shtctl->sheetseq[shtctl->top - 1];
+												keywin_on(sht);
 												io_cli();
 												fifo32_put(&task->fifo, 4);
 												io_sti();
@@ -266,7 +272,6 @@ void HariMain(void)
 							y = my - mmy;
 							new_wx = (mmx2 + x + 2) & ~3;
 							new_wy = new_wy + y;
-							//	sheet_slide(sht, (mmx2 + x + 2) & ~3, sht->ly + y);
 							mmy = my;
 						}
 					} else  //没有按下鼠标左键
@@ -282,6 +287,10 @@ void HariMain(void)
 				close_console(shtctl->sheets + (dat - 768));
 			} else if (1024 <= dat && dat <= 2023) {	//关闭没有sht的console和任务
 				close_constask(taskctl->task + (dat - 1024));
+			} else if (2024 <= dat && dat <= 2279) {  //只关闭命令行窗口
+				sht2 = shtctl->sheets + (dat - 2024);
+				memman_free_4k(memman, (uint) sht2->buf, 256 * 165);
+				sheet_free(sht2);
 			}
 		}
 	}
