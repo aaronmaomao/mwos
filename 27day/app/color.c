@@ -1,13 +1,6 @@
-typedef unsigned char uchar;
+#include "../api/apislib.h"
 
-int api_openwin(char *buf, int xsize, int ysize, int col_inv, char *title);
-void api_initmalloc(void);
-char *api_malloc(int size);
-void api_free(char *addr, int size);
-void api_end(void);
-void api_refreshwin(int win, int x0, int y0, int x1, int y1);
-int api_getkey(int mode);
-uchar rgb2pal(int r, int g, int b, int x, int y);
+typedef unsigned char uchar;
 
 void HariMain(void) {
 	char *buf;

@@ -103,6 +103,7 @@ void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py
 #define AR_CODE32_ER	0x409a
 #define AR_INTGATE32	0x008e
 #define AR_TSS32		0x0089
+#define AR_LDT			0x0082
 
 /**
  * 存放段的基地址，段的界限，段的存取权限
@@ -294,7 +295,7 @@ typedef struct TSS32 {
 	int backline, esp0, ss0, esp1, ss1, esp2, ss2, cr3;	//与任务设置相关的信息
 	int eip, eflags, eax, ecx, edx, ebx, esp, ebp, esi, edi;	//记录该任务的32位寄存器值
 	int es, cs, ss, ds, fs, gs;	//记录该任务的段寄存器值
-	int ldtr, iomap;
+	int ldtr, iomap; //ldtr是这个任务的ldt描述符
 } TSS32;
 
 typedef struct TASK {
@@ -302,6 +303,7 @@ typedef struct TASK {
 	int level, priority;
 	FIFO32 fifo;
 	TSS32 tss;
+	SEGMENT_DESC ldt[2];
 	struct CONSOLE *cons;
 	int ds_base, cons_stack;
 } TASK;
@@ -340,8 +342,7 @@ void putfonts8_asc_sht(SHEET *sht, int lx, int ly, int color, int bcolor, char *
 void change_wtitle8(SHEET *sht, char act);
 
 /** console.c */
-typedef struct CONSOLE
-{
+typedef struct CONSOLE {
 	SHEET *sht;
 	int cur_x, cur_y, cur_c;
 	TIMER *timer;

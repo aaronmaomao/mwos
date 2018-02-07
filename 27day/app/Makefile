@@ -21,54 +21,42 @@ rulefile = $(toolpath)haribote/haribote.rul
 makefont = $(toolpath)makefont.exe
 #将字体二进制文件转为可链接的obj文件
 bin2obj = $(toolpath)bin2obj.exe
+#将多个obj文件封装为lib静态库
+golib = $(toolpath)golib00.exe
 
-bug1_objs = $(objp)bug1.obj $(objp)a_nask.obj
-bug2_objs = $(objp)bug2.obj $(objp)a_nask.obj
-bug3_objs = $(objp)bug3.obj $(objp)a_nask.obj
-hello4_objs = $(objp)hello4.obj $(objp)a_nask.obj
-winhello_objs = $(objp)winhello.obj $(objp)a_nask.obj
-noodle_objs = $(objp)noodle.obj $(objp)a_nask.obj
-color_objs = $(objp)color.obj $(objp)a_nask.obj
+apis_objs = $(objp)_api_putchar.obj, $(objp)_api_putstr0.obj, \
+			$(objp)_api_openwin.obj, $(objp)_api_putstrwin.obj, $(objp)_api_boxfillwin.obj, $(objp)_api_point.obj, $(objp)_api_refreshwin.obj, $(objp)_api_linewin.obj, $(objp)_api_closewin.obj, $(objp)_api_getkey.obj \
+			$(objp)_api_alloctimer.obj, $(objp)_api_inittimer.obj, $(objp)_api_settimer.obj, $(objp)_api_freetimer.obj \
+			$(objp)_api_initmalloc.obj, $(objp)_api_malloc.obj, $(objp)_api_free.obj \
+			$(objp)_api_beep.obj \
+			$(objp)_api_end.obj
 
-default: bug1.mwe bug2.mwe bug3.mwe hello4.mwe winhello.mwe noodle.mwe color.mwe
+apislib = ../api/apislib.lib
+
+default: hello4.mwe winhello.mwe noodle.mwe color.mwe
 	
-bug1.mwe: $(objp)bug1.bim Makefile
-	$(bim2hrb) $(objp)bug1.bim bug1.mwe 0
-$(objp)bug1.bim: $(bug1_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)bug1.bim map:$(objp)bug1.map $(bug1_objs)
-
-bug2.mwe: $(objp)bug2.bim Makefile
-	$(bim2hrb) $(objp)bug2.bim bug2.mwe 0
-$(objp)bug2.bim: $(bug2_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)bug2.bim map:$(objp)bug2.map $(bug2_objs)
-
-bug3.mwe: $(objp)bug3.bim Makefile
-	$(bim2hrb) $(objp)bug3.bim bug3.mwe 0
-$(objp)bug3.bim: $(bug3_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)bug3.bim map:$(objp)bug3.map $(bug3_objs)
-
 hello4.mwe: $(objp)hello4.bim Makefile
 	$(bim2hrb) $(objp)hello4.bim hello4.mwe 0
-$(objp)hello4.bim: $(hello4_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)hello4.bim stack:1k map:$(objp)hello4.map $(hello4_objs)	
+$(objp)hello4.bim: $(objp)hello4.obj $(apislib) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)hello4.bim stack:1k map:$(objp)hello4.map $(objp)hello4.obj $(apislib)
 
 winhello.mwe: $(objp)winhello.bim Makefile
 	$(bim2hrb) $(objp)winhello.bim winhello.mwe 48k
-$(objp)winhello.bim: $(winhello_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)winhello.bim stack:1k map:$(objp)winhello.map $(winhello_objs)	
+$(objp)winhello.bim: $(objp)winhello.obj $(apislib) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)winhello.bim stack:1k map:$(objp)winhello.map $(objp)winhello.obj $(apislib)
 
 noodle.mwe: $(objp)noodle.bim Makefile
 	$(bim2hrb) $(objp)noodle.bim noodle.mwe 40k
-$(objp)noodle.bim: $(noodle_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)noodle.bim stack:1k map:$(objp)noodle.map $(noodle_objs)
+$(objp)noodle.bim: $(objp)noodle.obj $(apislib) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)noodle.bim stack:1k map:$(objp)noodle.map $(objp)noodle.obj $(apislib)
 
 color.mwe: $(objp)color.bim Makefile
 	$(bim2hrb) $(objp)color.bim color.mwe 56K
-$(objp)color.bim: $(color_objs) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)color.bim stack:1k map:$(objp)color.map $(color_objs)
-	
-$(objp)a_nask.obj: a_nask.asm Makefile
-	$(nask) a_nask.asm $(objp)a_nask.obj $(objp)a_nask.lst
+$(objp)color.bim: $(objp)color.obj $(apislib) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)color.bim stack:1k map:$(objp)color.map $(objp)color.obj $(apislib)
+
+$(apislib):
+	$(make) -C ../api/
 
 #一般规则	
 $(objp)%.obj: $(objp)%.asm Makefile
@@ -89,3 +77,4 @@ clean:
 	del /Q .\obj\*.bin
 	del /Q .\obj\*.sys
 	del /Q .\*.mwe
+	

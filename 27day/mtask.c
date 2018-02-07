@@ -22,7 +22,9 @@ TASK *task_init(MEMMAN *mem)
 	for (i = 0; i < MAX_TASKS; i++) {
 		taskctl->task[i].flags = 0;
 		taskctl->task[i].sel = (TASK_BGDT + i) * 8;
-		set_segmdesc(gdt + TASK_BGDT + i, 103, (int)&taskctl->task[i].tss, AR_TSS32); //一个TSS表就是一个单独的内存段，长103
+		taskctl->task[i].tss.ldtr = (TASK_BGDT + MAX_TASKS + i) * 8; //这个任务的ldt描述 在GDT中的位置
+		set_segmdesc(gdt + TASK_BGDT + i, 103, (int) &taskctl->task[i].tss, AR_TSS32); //一个TSS表就是一个单独的内存段，长103
+		set_segmdesc(gdt + TASK_BGDT + MAX_TASKS + i, 15, (int) taskctl->task[i].ldt, AR_LDT);//这段内存是ldt描述段
 	}
 
 	for (i = 0; i < MAX_TASKLEVELS; i++) {
@@ -73,7 +75,7 @@ TASK *task_alloc(void)
 			task->tss.ds = 0;
 			task->tss.fs = 0;
 			task->tss.gs = 0;
-			task->tss.ldtr = 0;
+		//	task->tss.ldtr = 0;
 			task->tss.iomap = 0x40000000;
 			task->tss.ss0 = 0;
 			return task;

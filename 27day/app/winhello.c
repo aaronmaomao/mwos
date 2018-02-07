@@ -1,17 +1,4 @@
-int api_openwin(char *buf, int xsize, int ysize, int col_inv, char *title);
-void api_putstrwin(int win, int lx, int ly, int col, int len, char *str);
-void api_boxfillwin(int win, int lx0, int ly0, int lx1, int ly1, int col);
-void api_point(int win, int x, int y, int col);
-void api_refreshwin(int win, int x0, int y0, int x1, int y1);
-void api_linewin(int win, int x0, int y0, int x1, int y1, int col);
-void api_closewin(int win);
-int api_getkey(int mode);
-
-void api_initmalloc(void);
-char *api_malloc(int size);
-void api_free(char *addr, int size);
-
-void api_end(void);
+#include "../api/apislib.h"
 
 /* draw line */
 void HariMain(void) {
@@ -20,7 +7,7 @@ void HariMain(void) {
 	api_initmalloc();
 	buf = api_malloc(160 * 100);
 	win = api_openwin(buf, 160, 100, -1, "star");
-	for (i = 0; i < 8; i++) { //Ëæ»ú²úÉú30¸öµã
+	for (i = 0; i < 8; i++) { //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½30ï¿½ï¿½ï¿½ï¿½
 		api_linewin(win + 1, 8, 26, 77, i * 9 + 26, i);
 		api_linewin(win + 1, 88, 26, i * 9 + 88, 89, i);
 	}
@@ -40,7 +27,7 @@ void HariMain(void) {
 //	buf = api_malloc(150 * 50);
 //	win = api_openwin(buf, 150, 100, -1, "star");
 //	api_boxfillwin(win + 1, 6, 26, 143, 93, 0);
-//	for (i = 0; i < 30; i++) { //Ëæ»ú²úÉú30¸öµã
+//	for (i = 0; i < 30; i++) { //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½30ï¿½ï¿½ï¿½ï¿½
 //		x = rand() % 137 + 6;
 //		y = rand() % 67 + 26;
 //		api_point(win + 1, x, y, 3);

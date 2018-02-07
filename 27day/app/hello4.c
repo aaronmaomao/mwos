@@ -5,8 +5,7 @@
  *      Author: aaron
  */
 
-void api_putstr0(char *str);
-void api_end(void);
+#include "../api/apislib.h"
 
 void HariMain(){
 	api_putstr0("Hello world!\n");

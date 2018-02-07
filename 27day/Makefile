@@ -116,6 +116,7 @@ clean:
 	del /Q .\obj\*.bin
 	del /Q .\obj\*.sys
 	$(make) -C ./app/ clean
+	$(make) -C ./api/ clean
 	
 a1:
 	$(make) -C ./app/ clean

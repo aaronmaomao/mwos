@@ -163,12 +163,15 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 			q = (char *) memman_alloc_4k(memman, segsize);
 			//*((int *)0x0fe8) = (int)q;	//把数据段的地址存起来
 			task->ds_base = (int) q;
-			set_segmdesc(gdt + task->sel / 8 + 1000, fileinfo->size - 1, (int) p, AR_CODE32_ER + 0x60);	//代码段：注：0x60意思是这个段是应用程序用
-			set_segmdesc(gdt + task->sel / 8 + 2000, segsize - 1, (int) q, AR_DATA32_RW + 0x60);		//数据段
+			//	set_segmdesc(gdt + task->sel / 8 + 1000, fileinfo->size - 1, (int) p, AR_CODE32_ER + 0x60);	//代码段：注：0x60意思是这个段是应用程序用
+			//	set_segmdesc(gdt + task->sel / 8 + 2000, segsize - 1, (int) q, AR_DATA32_RW + 0x60);		//数据段
+			set_segmdesc(task->ldt + 0, fileinfo->size - 1, (int) p, AR_CODE32_ER + 0x60);	//代码段：注：0x60意思是这个段是应用程序用
+			set_segmdesc(task->ldt + 1, segsize - 1, (int) q, AR_DATA32_RW + 0x60);		//数据段
 			for (i = 0; i < datsize; i++) {
 				q[esp + i] = p[dathrb + i];
 			}
-			start_app(0x1b, task->sel + 1000 * 8, esp, task->sel + 2000 * 8, &(task->tss.esp0));
+			//start_app(0x1b, task->sel + 1000 * 8, esp, task->sel + 2000 * 8, &(task->tss.esp0));
+			start_app(0x1b, 0 * 8 + 4, esp, 1 * 8 + 4, &(task->tss.esp0));
 			shtctl = (SHEETCTL *) *((int *) 0x0fe4);
 			for (i = 0; i < MAX_SHEETS; i++) {
 				sht = &(shtctl->sheets[i]);
