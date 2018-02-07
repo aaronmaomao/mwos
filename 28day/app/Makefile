@@ -33,7 +33,7 @@ apis_objs = $(objp)_api_putchar.obj, $(objp)_api_putstr0.obj, \
 
 apislib = ../api/apislib.lib
 
-default: hello4.mwe winhello.mwe noodle.mwe color.mwe
+default: hello4.mwe winhello.mwe noodle.mwe color.mwe sosu.mwe
 	
 hello4.mwe: $(objp)hello4.bim Makefile
 	$(bim2hrb) $(objp)hello4.bim hello4.mwe 0
@@ -54,6 +54,11 @@ color.mwe: $(objp)color.bim Makefile
 	$(bim2hrb) $(objp)color.bim color.mwe 56K
 $(objp)color.bim: $(objp)color.obj $(apislib) Makefile
 	$(obj2bim) @$(rulefile) out:$(objp)color.bim stack:1k map:$(objp)color.map $(objp)color.obj $(apislib)
+	
+sosu.mwe: $(objp)sosu.bim Makefile
+	$(bim2hrb) $(objp)sosu.bim sosu.mwe 11K
+$(objp)sosu.bim: $(objp)sosu.obj $(apislib) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)sosu.bim stack:10k map:$(objp)sosu.map $(objp)sosu.obj $(apislib)
 
 $(apislib):
 	$(make) -C ../api/
