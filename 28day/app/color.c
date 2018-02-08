@@ -4,7 +4,7 @@ typedef unsigned char uchar;
 
 void HariMain(void) {
 	char *buf;
-	int win, x, y, r, g, b;
+	int win, x, y;
 	api_initmalloc();
 	buf = api_malloc(144 * 164);
 	win = api_openwin(buf, 144, 164, -1, "color");

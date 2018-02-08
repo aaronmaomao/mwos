@@ -306,6 +306,9 @@ typedef struct TASK {
 	SEGMENT_DESC ldt[2];
 	struct CONSOLE *cons;
 	int ds_base, cons_stack;
+	struct FILEHANDLE *fhandle;
+	int *fat;
+	char *cmdline;
 } TASK;
 
 typedef struct TASKLEVEL {
@@ -370,6 +373,12 @@ typedef struct FILEINFO {
 	ushort time, date, clustno;	//时间，日期，簇号
 	uint size;	//文件大小
 } FILEINFO;
+
+typedef struct FILEHANDLE {
+	char *buf;	//文件在内存中的副本
+	int size;	//文件大小
+	int pos;	//操作文件的位置标记
+} FILEHANDLE;
 
 FILEINFO *file_search(char *name, FILEINFO *fileinfo, int max);
 void file_loadfile(int clustno, int size, char *buf, int *fat, char *img);

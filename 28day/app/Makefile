@@ -33,7 +33,7 @@ apis_objs = $(objp)_api_putchar.obj, $(objp)_api_putstr0.obj, \
 
 apislib = ../api/apislib.lib
 
-default: hello4.mwe winhello.mwe noodle.mwe color.mwe sosu.mwe
+default: hello4.mwe winhello.mwe noodle.mwe color.mwe sosu.mwe type2.mwe
 	
 hello4.mwe: $(objp)hello4.bim Makefile
 	$(bim2hrb) $(objp)hello4.bim hello4.mwe 0
@@ -43,7 +43,7 @@ $(objp)hello4.bim: $(objp)hello4.obj $(apislib) Makefile
 winhello.mwe: $(objp)winhello.bim Makefile
 	$(bim2hrb) $(objp)winhello.bim winhello.mwe 48k
 $(objp)winhello.bim: $(objp)winhello.obj $(apislib) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)winhello.bim stack:1k map:$(objp)winhello.map $(objp)winhello.obj $(apislib)
+	$(obj2bim) @$(rulefile) out:$(objp)winhello.bim stack:20k map:$(objp)winhello.map $(objp)winhello.obj $(apislib)
 
 noodle.mwe: $(objp)noodle.bim Makefile
 	$(bim2hrb) $(objp)noodle.bim noodle.mwe 40k
@@ -56,9 +56,14 @@ $(objp)color.bim: $(objp)color.obj $(apislib) Makefile
 	$(obj2bim) @$(rulefile) out:$(objp)color.bim stack:1k map:$(objp)color.map $(objp)color.obj $(apislib)
 	
 sosu.mwe: $(objp)sosu.bim Makefile
-	$(bim2hrb) $(objp)sosu.bim sosu.mwe 11K
+	$(bim2hrb) $(objp)sosu.bim sosu.mwe 50K
 $(objp)sosu.bim: $(objp)sosu.obj $(apislib) Makefile
-	$(obj2bim) @$(rulefile) out:$(objp)sosu.bim stack:10k map:$(objp)sosu.map $(objp)sosu.obj $(apislib)
+	$(obj2bim) @$(rulefile) out:$(objp)sosu.bim stack:11k map:$(objp)sosu.map $(objp)sosu.obj $(apislib)
+	
+type2.mwe: $(objp)type2.bim Makefile
+	$(bim2hrb) $(objp)type2.bim type2.mwe 50K
+$(objp)type2.bim: $(objp)type2.obj $(apislib) Makefile
+	$(obj2bim) @$(rulefile) out:$(objp)type2.bim stack:1k map:$(objp)type2.map $(objp)type2.obj $(apislib)
 
 $(apislib):
 	$(make) -C ../api/

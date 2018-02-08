@@ -17,12 +17,19 @@ void console_task(SHEET *sht, uint memtotal)
 	char cmdLine[30];
 	CONSOLE cons;
 	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
+	FILEHANDLE fhandle[8];
 	int dat, *fat = (int *) memman_alloc_4k(memman, 4 * 2880);
+	for (dat = 0; dat < 8; dat++) {
+		fhandle[dat].buf = 0;
+	}
 	cons.cur_x = 8;
 	cons.cur_y = 28;
 	cons.cur_c = -1;
 	cons.sht = sht;
 	task->cons = &cons;
+	task->fhandle = fhandle;
+	task->fat = fat;
+	task->cmdline = cmdLine;
 
 	if (sht != 0) {
 		cons.timer = timer_alloc();
@@ -177,6 +184,12 @@ int cmd_app(CONSOLE *cons, int *fat, char *cmdLine)
 				sht = &(shtctl->sheets[i]);
 				if ((sht->flags & 0x11) == 0x11 && sht->task == task) {
 					sheet_free(sht);
+				}
+			}
+			for (i = 0; i < 8; i++) {	//如果用户未手动释放文件
+				if (task->fhandle[i].buf != 0) {
+					memman_free_4k(memman, (int) task->fhandle[i].buf, task->fhandle[i].size);
+					task->fhandle[i].buf = 0;
 				}
 			}
 			timer_cancelall(&task->fifo);
@@ -413,6 +426,9 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 	SHEETCTL *shtctl = (SHEETCTL *) *((int *) 0x0fe4);
 	FIFO32 *sys_fifo = (FIFO32 *) *((int *) 0x0fec);
 	SHEET *sht;
+	FILEINFO *finfo;
+	FILEHANDLE *fhandle;
+	MEMMAN *memman = (MEMMAN *) MEMMAN_ADDR;
 	int *reg = &eax + 1;
 	int dat;
 	if (edx == 1) {
@@ -528,6 +544,75 @@ int *mwe_api(int edi, int esi, int ebp, int esp, int ebx, int edx, int ecx, int 
 			dat = io_in8(0x61);
 			io_out8(0x61, (dat | 0x03) & 0x0f);
 		}
+	} else if (edx == 21) { //打开文件，ebx文件名，返回句柄
+		for (dat = 0; dat < 8; dat++) {
+			if (task->fhandle[dat].buf == 0) {
+				break;
+			}
+		}
+		fhandle = &task->fhandle[dat];
+		reg[7] = 0;
+		if (dat < 8) {
+			finfo = file_search((char *) ebx + ds_base, (FILEINFO *) (ADR_DISKIMG + 0x002600), 224);
+			if (finfo != 0) {
+				reg[7] = (int) fhandle;
+				fhandle->buf = memman_alloc_4k(memman, finfo->size);
+				fhandle->size = finfo->size;
+				fhandle->pos = 0;
+				file_loadfile(finfo->clustno, finfo->size, fhandle->buf, task->fat, (char *) (ADR_DISKIMG + 0x003e00));
+			}
+		}
+	} else if (edx == 22) {	//关闭文件,eax文件句柄
+		fhandle = (FILEHANDLE *) eax;
+		memman_free_4k(memman, fhandle->buf, fhandle->size);
+		fhandle->buf = 0;
+	} else if (edx == 23) { //文件定位,eax文件句柄，ecx定位模式，ebx定位偏移量
+		fhandle = (FILEHANDLE *) eax;
+		if (ecx == 0) {
+			fhandle->pos = ebx;
+		} else if (ecx == 1) {
+			fhandle->pos += ebx;
+		} else if (ecx == 2) {
+			fhandle->pos = fhandle->size + ebx;
+		}
+		if (fhandle->pos < 0) {
+			fhandle->pos = 0;
+		}
+		if (fhandle->pos > fhandle->size) {
+			fhandle->pos = fhandle->size;
+		}
+	} else if (edx == 24) { //获取文件大小
+		fhandle = (FILEHANDLE *) eax;
+		if (ecx == 0) {
+			reg[7] = fhandle->size;
+		} else if (ecx == 1) {
+			reg[7] = fhandle->pos;
+		} else if (ecx == 2) {
+			reg[7] = fhandle->pos - fhandle->size;
+		}
+	} else if (edx == 25) {	//文件读取
+		fhandle = (FILEHANDLE *) eax;
+		for (dat = 0; dat < ecx; dat++) {
+			if (fhandle->pos == fhandle->size) {
+				break;
+			}
+			*((char *) ebx + ds_base + dat) = fhandle->buf[fhandle->pos];	//ebx缓冲区地址
+			fhandle->pos++;
+		}
+		reg[7] = dat;
+	} else if (edx == 26) {	//应用程序获取当前输入的命令字符串
+		dat = 0;
+		for (;;) {
+			*((char *) ebx + ds_base + dat) = task->cmdline[dat];
+			if (task->cmdline[dat] == 0) {
+				break;
+			}
+			if (dat >= ecx) {
+				break;
+			}
+			dat++;
+		}
+		reg[7] = dat;
 	}
 	return 0;
 }

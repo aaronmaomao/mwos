@@ -29,7 +29,9 @@ apis_objs = $(objp)_api_putchar.obj  $(objp)_api_putstr0.obj \
 			$(objp)_api_alloctimer.obj  $(objp)_api_inittimer.obj $(objp)_api_settimer.obj $(objp)_api_freetimer.obj \
 			$(objp)_api_initmalloc.obj $(objp)_api_malloc.obj $(objp)_api_free.obj \
 			$(objp)_api_beep.obj \
-			$(objp)_api_end.obj 
+			$(objp)_api_end.obj $(objp)__alloca.obj \
+			$(objp)_api_fopen.obj $(objp)_api_fclose.obj $(objp)_api_fseek.obj $(objp)_api_fsize.obj $(objp)_api_fread.obj \
+			$(objp)_api_cmdline.obj
 			
 default:apislib.lib
 

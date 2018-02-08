@@ -12,8 +12,11 @@
 
 void HariMain(void)
 {
-	char flag[MAX], s[8];
+	//char flag[MAX], s[8];
+	char *flag, s[8];
 	int i, j;
+	api_initmalloc();
+	flag = api_malloc(MAX);
 	for (i = 0; i < MAX; i++) {
 		flag[i] = 0;
 	}

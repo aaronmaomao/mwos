@@ -1,11 +1,12 @@
 #include "../api/apislib.h"
 
 /* draw line */
-void HariMain(void) {
-	char *buf;
+void HariMain(void)
+{
+	char buf[160 * 100];	//note:_alloca
 	int win, i;
 	api_initmalloc();
-	buf = api_malloc(160 * 100);
+	//buf = api_malloc(160 * 100);
 	win = api_openwin(buf, 160, 100, -1, "star");
 	for (i = 0; i < 8; i++) { //�������30����
 		api_linewin(win + 1, 8, 26, 77, i * 9 + 26, i);
@@ -35,9 +36,7 @@ void HariMain(void) {
 //	api_refreshwin(win, 6, 26, 144, 94);
 //	api_end();
 //}
-
 //char buf[150 * 50];
-
 //void HariMain(void) {
 //	char *buf;
 //	int win;
