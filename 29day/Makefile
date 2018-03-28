@@ -92,10 +92,10 @@ $(objp)$(font).obj: $(font).font Makefile
 
 #一般规则	
 $(objp)%.obj: $(objp)%.asm Makefile
-	$(nask) $(objp)$*.asm $(objp)$*.obj $(objp)$*.lst
+	as $(objp)$*.asm -o $(objp)$*.obj -adlhn=$(objp)$*.lst -D --gstabs
 	
-$(objp)%.asm: $(objp)%.gas Makefile
-	$(gas2nask) $(objp)$*.gas $(objp)$*.asm
+$(objp)%.asm: %.c Makefile
+	cc1 -masm=intel -gcoff -I $(incpath) $*.c -o $(objp)$*.asm
 
 $(objp)%.gas: %.c Makefile
 	$(cc1) -o $(objp)$*.gas $*.c
