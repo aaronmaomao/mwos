@@ -91,14 +91,15 @@ $(objp)$(font).obj: $(font).font Makefile
 #####################
 
 #一般规则	
-$(objp)%.obj: $(objp)%.asm Makefile
-	as $(objp)$*.asm -o $(objp)$*.obj -adlhn=$(objp)$*.lst -D --gstabs
+$(objp)%.obj: $(objp)%.asm
+	$(nask) $(objp)$*.asm  $(objp)$*.obj $(objp)$*.lst
 	
-$(objp)%.asm: %.c Makefile
-	cc1 -masm=intel -gcoff -I $(incpath) $*.c -o $(objp)$*.asm
+$(objp)%.asm: $(objp)%.gas
+	$(gas2nask) $(objp)$*.gas $(objp)$*.asm
 
-$(objp)%.gas: %.c Makefile
-	$(cc1) -o $(objp)$*.gas $*.c
+$(objp)%.gas:
+	cc1 -m32 -O1 $*.c -o $(objp)$*.gas -I D:\OS\30day\tolset\z_tools\haribote
+	cc1 -m32 -gcoff -masm=intel -O1 $*.c -o $(objp)_$*.asm -I D:\OS\30day\tolset\z_tools\haribote
 
 #consolas16.bin: consolas16.txt Makefile
 #	$(makefont) consolas16.txt $(objp)consolas16.bin
