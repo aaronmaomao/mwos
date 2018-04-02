@@ -98,8 +98,8 @@ $(objp)%.asm: $(objp)%.gas
 	$(gas2nask) $(objp)$*.gas $(objp)$*.asm
 
 $(objp)%.gas:
-	cc1 -m32 -O1 $*.c -o $(objp)$*.gas -I D:\OS\30day\tolset\z_tools\haribote
-	cc1 -m32 -gcoff -masm=intel -O1 $*.c -o $(objp)_$*.asm -I D:\OS\30day\tolset\z_tools\haribote
+	cc1 -m32 -O1 $*.c -o $(objp)$*.gas -I D:\study\30day\tolset\z_tools\haribote
+	cc1 -m32 -gcoff -masm=intel -O1 $*.c -o $(objp)_$*.asm -I D:\study\30day\tolset\z_tools\haribote
 
 #consolas16.bin: consolas16.txt Makefile
 #	$(makefont) consolas16.txt $(objp)consolas16.bin
@@ -109,7 +109,7 @@ run1:
 debug1:
 	F:\vbox\install\VirtualBox.exe --startvm F:\vbox\mwos\mwos.vbox --debug
 run2:
-	F:\install\vbox\install\VirtualBox.exe --startvm C:\Users\mao-zhengjun\vbox\mwos\mwos.vbox
+	D:\study\install\vbox\install\VirtualBox.exe --startvm D:\study\install\vbox\mwos
 debug2:
 	F:\install\vbox\install\VirtualBox.exe --startvm C:\Users\mao-zhengjun\vbox\mwos\mwos.vbox --debug
 	
