@@ -8,3 +8,7 @@ regardless of the setting of this bit. //不管这个位的设置如何。
 prompt user whether to create a folder or not. //提示用户是否创建文件夹
 Create first-class enterprise, make first-class product, battalion first-class team //创一流企业,造一流产品,营一流团队
 this might take a while  //这可能需要一段时间
+Unfortunately, .... For this reason, ....   //不幸地是..., 基于这个原因....
+Application Under Test //被测试应用程序
+As it can be guessed by its name //由它的名字猜测（可得）/见名知意
+In addition to big names, a lot of startups are participating in this market. //除了大牌，很多初创公司都参与了这个市场。
